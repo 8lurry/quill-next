@@ -678,7 +678,6 @@ function makeCodeBlockHandler(indent: boolean): BindingObject {
           } else {
             length += TAB.length;
           }
-          // @ts-expect-error Fix me later
         } else if (line.domNode.textContent.startsWith(TAB)) {
           line.deleteAt(0, TAB.length);
           if (i === 0) {
