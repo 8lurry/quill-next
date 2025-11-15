@@ -215,4 +215,227 @@ describe('Table Module', () => {
       );
     });
   });
+
+  describe('className formats', () => {
+    const setupWithHtml = (html: string) => {
+      Quill.register({ 'modules/table': Table }, true);
+
+      class CustomTableRow extends TableRow {
+        static create(value: string) {
+          const node = super.create() as HTMLElement;
+          if (value) {
+            node.className = value;
+          }
+          return node;
+        }
+
+        static formats(domNode: HTMLElement) {
+          return domNode.className;
+        }
+
+        formats() {
+          const formats = CustomTableRow.formats(this.domNode);
+          return { [CustomTableRow.blotName]: formats };
+        }
+
+        format(name: string, value: string) {
+          if (name === CustomTableRow.blotName) {
+            if (value == null || value === '') {
+              this.domNode.removeAttribute('class');
+            } else {
+              this.domNode.className = value;
+            }
+          }
+        }
+      }
+
+      class CustomTableContainer extends TableContainer {
+        static create(value: string) {
+          const node = super.create() as HTMLElement;
+          if (value) {
+            node.className = value;
+          }
+          return node;
+        }
+
+        static formats(domNode: HTMLElement) {
+          return domNode.className;
+        }
+
+        formats() {
+          const formats = CustomTableContainer.formats(this.domNode);
+          return { [CustomTableContainer.blotName]: formats };
+        }
+
+        format(name: string, value: string) {
+          if (name === CustomTableContainer.blotName) {
+            if (value == null || value === '') {
+              this.domNode.removeAttribute('class');
+            } else {
+              this.domNode.className = value;
+            }
+          }
+        }
+      }
+
+      const container = document.body.appendChild(
+        document.createElement('div'),
+      );
+      container.innerHTML = normalizeHTML(html);
+      const quill = new Quill(container, {
+        modules: { table: true },
+        registry: createRegistry([
+          TableBody,
+          TableCell,
+          CustomTableContainer,
+          CustomTableRow,
+        ]),
+      });
+      return quill;
+    };
+
+    test('table with class names', () => {
+      const quill = setupWithHtml(
+        `<table>
+          <tbody>
+            <tr class="row">
+              <td>data</td>
+              <td>more data</td>
+            </tr>
+          </tbody>
+        </table>`,
+      );
+      expect(quill.root).toEqualHTML(
+        `
+        <table>
+          <tbody>
+            <tr class="row">
+              <td>data</td>
+              <td>more data</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+        { ignoreAttrs: ['data-row'] },
+      );
+    });
+
+    test('table with class names varient 2', () => {
+      const quill = setupWithHtml(
+        `<table class="table">
+          <tbody>
+            <tr class="custom-row-class">
+              <td>data</td>
+              <td>more data</td>
+            </tr>
+            <tr>
+              <td><br></td>
+              <td><br></td>
+            </tr>
+            <tr class="custom-row-class2">
+              <td>data2</td>
+              <td>more data2</td>
+            </tr>
+          </tbody>
+        </table>`,
+      );
+      expect(quill.root).toEqualHTML(
+        `
+        <table class="table">
+          <tbody>
+            <tr class="custom-row-class">
+              <td>data</td>
+              <td>more data</td>
+            </tr>
+            <tr>
+              <td><br></td>
+              <td><br></td>
+            </tr>
+            <tr class="custom-row-class2">
+              <td>data2</td>
+              <td>more data2</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+        { ignoreAttrs: ['data-row'] },
+      );
+      quill.setSelection(0);
+      const tableModule = quill.getModule('table') as Table;
+      const [, row] = tableModule.getTable();
+      const index = row?.length();
+
+      quill.formatLine(index as number, 1, 'table-row', 'new-class-name');
+      expect(quill.root).toEqualHTML(
+        `
+        <table class="table">
+          <tbody>
+            <tr class="custom-row-class">
+              <td>data</td>
+              <td>more data</td>
+            </tr>
+            <tr class="new-class-name">
+              <td><br></td>
+              <td><br></td>
+            </tr>
+            <tr class="custom-row-class2">
+              <td>data2</td>
+              <td>more data2</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+        { ignoreAttrs: ['data-row'] },
+      );
+      quill.formatLine(
+        0,
+        1,
+        'table-container',
+        'new-table-class other-table-class',
+      );
+      expect(quill.root).toEqualHTML(
+        `
+        <table class="new-table-class other-table-class">
+          <tbody>
+            <tr class="custom-row-class">
+              <td>data</td>
+              <td>more data</td>
+            </tr>
+            <tr class="new-class-name">
+              <td><br></td>
+              <td><br></td>
+            </tr>
+            <tr class="custom-row-class2">
+              <td>data2</td>
+              <td>more data2</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+        { ignoreAttrs: ['data-row'] },
+      );
+      quill.formatLine(index as number, 1, 'table-container', '');
+      expect(quill.root).toEqualHTML(
+        `
+        <table>
+          <tbody>
+            <tr class="custom-row-class">
+              <td>data</td>
+              <td>more data</td>
+            </tr>
+            <tr class="new-class-name">
+              <td><br></td>
+              <td><br></td>
+            </tr>
+            <tr class="custom-row-class2">
+              <td>data2</td>
+              <td>more data2</td>
+            </tr>
+          </tbody>
+        </table>
+      `,
+        { ignoreAttrs: ['data-row'] },
+      );
+    });
+  });
 });
