@@ -1,6 +1,6 @@
 {
   "name": "quill-next-react",
-  "version": "1.1.0",
+  "version": "2025.11.0",
   "author": "Vincent Chan <okcdz@diverse.space>",
   "repository": {
     "type": "git",
@@ -35,7 +35,6 @@
     "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
-    "quill-next": "workspace:^2.1.0",
     "react": "*",
     "react-dom": "*"
   },
@@ -44,7 +43,7 @@
     "@emotion/react": "^11.14.0",
     "lodash-es": "^4.17.21",
     "marked": "^15.0.11",
-    "parchment": "*",
+    "parchment": "https://github.com/8lurry/parchment/releases/download/2025.11.0/parchment-2025.11.0.tgz",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
@@ -64,7 +63,7 @@
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^8.57.0",
-    "quill-next": "workspace:^2.1.0",
+    "quill-next": "https://github.com/8lurry/quill-next/releases/download/2025.11.0/quill-next-2025.11.0.tgz",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sass-embedded": "^1.87.0",
