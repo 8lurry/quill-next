@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Delta } from "quill-next";
+import { Delta } from 'quill';
 import { DeltaToMarkdown } from "./delta-to-markdown.class";
 
 describe("DeltaToMarkdown", () => {

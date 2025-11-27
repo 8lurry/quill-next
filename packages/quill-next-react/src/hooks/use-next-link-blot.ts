@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import Quill, { Link } from "quill-next";
+import Quill, { Link } from 'quill';
 import { BlotConstructor } from "parchment";
 import { messages } from "../messages";
 

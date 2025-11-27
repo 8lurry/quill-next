@@ -1,5 +1,5 @@
 import React from 'react';
-import { Delta } from 'quill-next';
+import { Delta } from 'quill';
 import type { Meta, StoryObj } from '@storybook/react';
 import { QuillEditor } from './editor.component';
 

@@ -6,7 +6,7 @@ import {
   filter,
 } from "rxjs";
 import { throttle } from "lodash-es";
-import Quill, { Bounds } from "quill-next";
+import Quill, { Bounds } from 'quill';
 import { useQuill } from "../hooks/use-quill";
 import { PortalRectAnchor } from "../components/rect-anchor.component";
 import { useQuillFormats } from "../hooks/use-quill-formats";

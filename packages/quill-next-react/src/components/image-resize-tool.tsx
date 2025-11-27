@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback } from "react";
 import { resizeHandleStyle, imageResizeTool } from "./image-resize-tool.style";
 import { useDispose } from "../hooks/use-dispose";
 import { fromEvent, takeUntil } from "rxjs";
-import { Delta } from "quill-next";
+import { Delta } from 'quill';
 import { useQuill } from "../hooks/use-quill";
 
 interface ResizeHandleProps {

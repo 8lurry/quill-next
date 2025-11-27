@@ -1,4 +1,4 @@
-import Quill, { Theme } from "quill-next";
+import Quill, { Theme } from 'quill';
 
 export class NextTheme extends Theme {
   constructor(quill: Quill, options: unknown) {

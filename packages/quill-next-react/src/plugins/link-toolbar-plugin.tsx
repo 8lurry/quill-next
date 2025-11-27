@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { takeUntil, timer } from "rxjs";
-import { Link } from "quill-next";
+import { Link } from 'quill';
 import { useQuill } from "../hooks/use-quill";
 import { useQuillEvent } from "../hooks/use-quill-event";
 import { PortalRectAnchor } from "../components/rect-anchor.component";

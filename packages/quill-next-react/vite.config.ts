@@ -31,7 +31,7 @@ export default defineConfig({
         "react",
         "react/jsx-runtime",
         "react-dom",
-        "quill-next",
+        "quill",
         "parchment",
         "rxjs",
         "lodash-es",

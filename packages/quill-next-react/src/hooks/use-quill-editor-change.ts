@@ -1,4 +1,4 @@
-import Quill from "quill-next";
+import Quill from 'quill';
 import { useQuill } from "./use-quill";
 import { EditorChangeHandler } from "../types/editor-change-handler.type";
 import { useQuillEvent } from "./use-quill-event";

@@ -1,6 +1,6 @@
 {
   "name": "quill-next-react",
-  "version": "2025.11.0",
+  "version": "2025.11.1",
   "author": "Vincent Chan <okcdz@diverse.space>",
   "repository": {
     "type": "git",
@@ -63,7 +63,7 @@
     "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^8.57.0",
-    "quill-next": "https://github.com/8lurry/quill-next/releases/download/2025.11.0/quill-next-2025.11.0.tgz",
+    "quill": "https://github.com/8lurry/quill-next/releases/download/2025.11.0/quill-next-2025.11.0.tgz",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sass-embedded": "^1.87.0",

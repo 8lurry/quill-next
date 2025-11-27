@@ -1,4 +1,4 @@
-import Quill from "quill-next";
+import Quill from 'quill';
 import { useContext } from "react";
 import { QuillContext } from "../context/quill-context";
 

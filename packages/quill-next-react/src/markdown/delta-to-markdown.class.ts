@@ -1,4 +1,4 @@
-import { Delta } from "quill-next";
+import { Delta } from 'quill';
 /**
  * Basically written by Gemini.
  */

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useMemo } from "react";
-import type Quill from "quill-next";
+import type Quill from 'quill';
 
 export function useQuillEvent(quill: Quill | null, eventName: string, callback?: any): void {
   const callbackRef = useRef(callback);

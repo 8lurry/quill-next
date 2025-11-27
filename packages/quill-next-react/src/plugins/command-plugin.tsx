@@ -4,7 +4,7 @@ import { PortalRectAnchor } from "../components/rect-anchor.component";
 import { Subject, fromEvent, takeUntil } from "rxjs";
 import { useQuill } from "../hooks/use-quill";
 import { useQuillArrowIndex } from "../hooks/use-quill-arrow-index";
-import { Delta } from "quill-next";
+import { Delta } from 'quill';
 
 export interface ICommandRenderOptions {
   selectedIndex: number;

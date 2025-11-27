@@ -1,4 +1,4 @@
-import Quill, { Bounds } from "quill-next";
+import Quill, { Bounds } from 'quill';
 
 export function limitBoundsInRect(bounds: Bounds, rect: Bounds): Bounds | null {
   const top = Math.max(bounds.top, rect.top);

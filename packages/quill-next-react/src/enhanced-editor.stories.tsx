@@ -1,7 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { QuillEditor, IQuillEditorProps } from "./editor.component";
-import { Delta } from "quill-next";
+import { Delta } from 'quill';
 import { SlashCommandPlugin } from "./plugins/slash-command-plugin";
 import { CommandPlugin } from "./plugins/command-plugin";
 import NotionLikeQuillEditor, {

@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState, useRef, CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { Bounds } from "quill-next";
+import { Bounds } from 'quill';
 
 export interface RectAnchorProps {
   placement?: "top" | "bottom";

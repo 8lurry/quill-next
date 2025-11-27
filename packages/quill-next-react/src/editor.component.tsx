@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import Quill, { type Delta, type EmitterSource, type QuillOptions } from "quill-next";
+import Quill, { type Delta, type EmitterSource, type QuillOptions } from 'quill';
 import { useQuillEvent } from "./hooks/use-quill-event";
 import { QuillContext } from "./context/quill-context";
 import { BlotConstructor } from "parchment";

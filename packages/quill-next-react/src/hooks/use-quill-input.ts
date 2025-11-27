@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useQuill } from "./use-quill";
 import { useQuillTextChange } from "./use-quill-text-change";
 import { useQuillSelectionChange } from "./use-quill-selection-change";
-import { Delta, Bounds, Range } from "quill-next";
+import { Delta, Bounds, Range } from 'quill';
 import { isString, isNumber, isObject } from "lodash-es";
 
 export interface IQuillInputOptions {

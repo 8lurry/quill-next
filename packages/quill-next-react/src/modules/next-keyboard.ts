@@ -1,4 +1,4 @@
-import Quill, { Keyboard, type KeyboardOptions, type Binding, type BindingObject } from "quill-next";
+import Quill, { Keyboard, type KeyboardOptions, type Binding, type BindingObject } from 'quill';
 import { cloneDeep } from 'lodash-es';
 
 const SHORTKEY = /Mac/i.test(navigator.platform) ? 'metaKey' : 'ctrlKey';

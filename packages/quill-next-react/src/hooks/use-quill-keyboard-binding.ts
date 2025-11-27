@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo } from "react";
-import { NormalizedBinding, Binding } from "quill-next";
+import { NormalizedBinding, Binding } from 'quill';
 import { NextKeyboard } from "../modules/next-keyboard";
 import { useQuill } from "./use-quill";
 import { isEqual } from "lodash-es";

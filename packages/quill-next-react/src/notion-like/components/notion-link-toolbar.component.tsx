@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Delta } from "quill-next";
+import { Delta } from 'quill';
 import { useQuill } from "../../hooks/use-quill";
 import { notionLinkToolbarContainer, notionLinkToolbar } from "./notion-link-toolbar.component.style";
 

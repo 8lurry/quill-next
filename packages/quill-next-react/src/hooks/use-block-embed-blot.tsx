@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import Quill, { BlockEmbed, Delta } from "quill-next";
+import Quill, { BlockEmbed, Delta } from 'quill';
 import { BlotConstructor, Root } from "parchment";
 import { createRoot, Root as ReactRoot } from "react-dom/client";
 import { QuillContext } from "../context/quill-context";

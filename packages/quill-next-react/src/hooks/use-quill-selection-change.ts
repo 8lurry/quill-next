@@ -1,5 +1,5 @@
 
-import Quill, { type Range, type EmitterSource } from "quill-next";
+import Quill, { type Range, type EmitterSource } from 'quill';
 import { useQuill } from "./use-quill";
 import { useQuillEvent } from "./use-quill-event";
 

@@ -1,4 +1,4 @@
-import Quill from "quill-next";
+import Quill from 'quill';
 import { useState } from "react";
 import { useQuill } from "./use-quill";
 import { useQuillEditorChange } from "./use-quill-editor-change";

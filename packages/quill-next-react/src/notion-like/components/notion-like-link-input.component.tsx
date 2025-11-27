@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { Bounds } from "quill-next";
+import { Bounds } from 'quill';
 import { timer, takeUntil } from "rxjs";
 import { createPortal } from "react-dom";
 import {
