@@ -437,5 +437,25 @@ describe('Table Module', () => {
         { ignoreAttrs: ['data-row'] },
       );
     });
+
+    test('table as first line', () => {
+      const content = `
+        <table class="table">
+          <tbody>
+            <tr>
+              <td data-row="row-4uol">Märkus: Detsembris ei ole Kaarli kirikus palvusi esmaspäeviti, sest kirikus toimuvad kontsertid. Selle asemel palvetame Dominiiklaste kabelis (Müürivahe 33). Ka proov kell 17 sealsamas. Ja 5. jaanuaril 2025 läheb elu edasi Kaarli kirikus.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p><br></p>
+        <p><br></p>
+        <p>Ühispalvus igal esmaspäeval kell 18:00. Enne palvust kell 17:00 lauluproov ja ettevalmistused. Igaüks on teretulnud! Ootame lauljaid juurde!</p>
+        <p>Asukoht: Tallinna Kaarli kirik</p>
+        <p>Korraldaja: EELK Tallinna Kaarli kogudus</p>
+        <p>Kontakt: Annely Neame (5267825)</p>
+        <p>N.B.: Juulis, augustis ja detsembris Kaarli kirikus palvusi esmaspäeviti ei ole.</p>`;
+      const quill = setupWithHtml(content);
+      expect(quill.root.innerHTML).toBe(normalizeHTML(content));
+    });
   });
 });

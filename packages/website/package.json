@@ -30,7 +30,7 @@
     "lz-string": "^1.5.0",
     "next": "^14.0.4",
     "next-mdx-remote": "^4.4.1",
-    "quill-next": "workspace:*",
+    "quill": "workspace:*",
     "quill-next-react": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
