@@ -169,8 +169,11 @@ class Scroll extends ScrollBlot {
         this.insertAt(lineEndIndex - 1, '\n');
       }
 
-      const formats = bubbleFormats(this.line(index)[0]);
+      const firstLine = this.line(index)[0];
+      const formats = bubbleFormats(firstLine);
       const attributes = AttributeMap.diff(formats, first.attributes) || {};
+      const firstLineOffset =
+        firstLine?.offset(firstLine.parent || this) || index;
       Object.keys(attributes).forEach((name) => {
         const format = this.scroll.query(name, Scope.BLOCK);
         if (
@@ -180,8 +183,10 @@ class Scroll extends ScrollBlot {
           containerAttributes.push({
             name,
             value: attributes[name],
-            index: lineEndIndex - 1,
-            length: delta.length(),
+            // index: lineEndIndex - 1,
+            index: firstLineOffset,
+            // length: delta.length(),
+            length: lineEndIndex - firstLineOffset,
           });
           return;
         }
@@ -235,7 +240,7 @@ class Scroll extends ScrollBlot {
             cAttributes[i].length = l;
           }
           containerAttributes.push(...cAttributes);
-          blockOffset += l === 0 ? 1 : l;
+          blockOffset += l; // === 0 ? 1 : l;
         } else {
           const blockEmbed = this.create(
             renderBlock.key,
