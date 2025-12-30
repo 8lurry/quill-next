@@ -9,8 +9,11 @@ abstract class CompositionSession {
   abstract commit(committedText: string): Promise<void>;
 
   protected composingData = '';
+  protected page: Page;
 
-  constructor(protected page: Page) {}
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   protected async withKeyboardEvents(
     key: string,
@@ -25,11 +28,14 @@ abstract class CompositionSession {
 }
 
 class ChromiumCompositionSession extends CompositionSession {
+  private session: CDPSession;
+
   constructor(
     page: Page,
-    private session: CDPSession,
+    session: CDPSession,
   ) {
     super(page);
+    this.session = session;
   }
 
   async update(key: string) {
@@ -54,10 +60,16 @@ class ChromiumCompositionSession extends CompositionSession {
 }
 
 class Composition {
+  private page: Page;
+  private browserName: PlaywrightWorkerOptions['browserName'];
+
   constructor(
-    private page: Page,
-    private browserName: PlaywrightWorkerOptions['browserName'],
-  ) {}
+    page: Page,
+    browserName: PlaywrightWorkerOptions['browserName'],
+  ) {
+    this.page = page;
+    this.browserName = browserName;
+  }
 
   async start() {
     switch (this.browserName) {

@@ -2,7 +2,11 @@ import type { Page } from '@playwright/test';
 import { SHORTKEY } from '../utils/index.js';
 
 class Clipboard {
-  constructor(private page: Page) {}
+  private page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   async copy() {
     await this.page.keyboard.press(`${SHORTKEY}+c`);

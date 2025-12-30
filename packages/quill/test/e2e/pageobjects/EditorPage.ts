@@ -55,7 +55,11 @@ const updateSelectionDef = [
 ];
 
 export default class EditorPage {
-  constructor(protected readonly page: Page) {}
+  protected readonly page: Page;
+
+  constructor(page: Page) {
+    this.page = page;
+  }
 
   get root() {
     return this.page.locator('.ql-editor');

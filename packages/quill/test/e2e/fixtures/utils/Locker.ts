@@ -12,11 +12,15 @@ const sleep = (ms: number) =>
 const PREFIX = 'playwright_locker_';
 
 class Locker {
+  private key: string;
+
   public static clearAll() {
     globSync(join(tmpdir(), `${PREFIX}*.txt`)).forEach(unlinkSync);
   }
 
-  constructor(private key: string) {}
+  constructor(key: string) {
+    this.key = key;
+  }
 
   private get filePath() {
     return join(tmpdir(), `${PREFIX}${this.key}.txt`);
