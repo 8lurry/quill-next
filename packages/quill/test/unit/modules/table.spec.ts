@@ -457,5 +457,29 @@ describe('Table Module', () => {
       const quill = setupWithHtml(content);
       expect(quill.root.innerHTML).toBe(normalizeHTML(content));
     });
+
+    test.only('updateContents with class names', () => {
+      const quill = setupWithHtml('<p><br></p>');
+      quill.updateContents(
+        new Delta()
+          .retain(quill.getLength())
+          .insert('\n\n', { table: 'row-lo87' })
+          .insert('\n\n', { table: 'row-54yt', 'table-row': 'custom-row' }),
+      );
+      expect(quill.root.innerHTML).toEqualHTML(
+        normalizeHTML(`
+        <p>
+          <br>
+        </p>
+        <table>
+          <tbody>
+            <tr><td><br></td><td><br></td></tr>
+            <tr class="custom-row"><td><br></td><td><br></td></tr>
+          </tbody>
+        </table>
+      `),
+        { ignoreAttrs: ['data-row'] },
+      );
+    });
   });
 });
