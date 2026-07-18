@@ -159,7 +159,7 @@ class SyntaxCodeBlockContainer extends CodeBlockContainer {
       ? SyntaxCodeBlock.formats(codeBlock.domNode)
       : 'plain';
 
-    return `<pre data-language="${language}">\n${escapeText(
+    return `<pre data-language="${escapeText(language)}">\n${escapeText(
       this.code(index, length),
     )}\n</pre>`;
   }
@@ -334,7 +334,7 @@ class Syntax extends Module<SyntaxOptions> {
 }
 Syntax.DEFAULTS = {
   hljs: (() => {
-    return window.hljs;
+    return typeof window !== 'undefined' ? window.hljs : null;
   })(),
   interval: 1000,
   languages: [

@@ -17,7 +17,13 @@
   "pnpm": {
     "overrides": {
       "playwright": "1.49.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "es5-ext",
+      "esbuild",
+      "highlight.js"
+    ]
   },
   "workspaces": [
     "packages/*"
@@ -58,5 +64,6 @@
   },
   "dependencies": {
     "next": "^14.0.4"
-  }
+  },
+  "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa"
 }
