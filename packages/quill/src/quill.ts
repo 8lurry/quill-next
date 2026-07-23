@@ -87,6 +87,8 @@ Quill.register(
     'formats/direction': DirectionClass,
     'formats/indent': Indent,
 
+    'formats/styles': Styles,
+
     'formats/background': BackgroundStyle,
     'formats/color': ColorStyle,
     'formats/font': FontClass,
