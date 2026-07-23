@@ -458,7 +458,7 @@ describe('Table Module', () => {
       expect(quill.root.innerHTML).toBe(normalizeHTML(content));
     });
 
-    test.only('updateContents with class names', () => {
+    test('updateContents with class names', () => {
       const quill = setupWithHtml('<p><br></p>');
       quill.updateContents(
         new Delta()

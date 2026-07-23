@@ -8,6 +8,7 @@ import type {
 } from './core.js';
 
 import { AlignClass, AlignStyle } from './formats/align.js';
+import { Styles } from './formats/styles.js';
 import {
   DirectionAttribute,
   DirectionClass,
@@ -70,6 +71,7 @@ Quill.register(
     'attributors/class/size': SizeClass,
 
     'attributors/style/align': AlignStyle,
+    'attributors/styles': Styles,
     'attributors/style/background': BackgroundStyle,
     'attributors/style/color': ColorStyle,
     'attributors/style/direction': DirectionStyle,

@@ -15,6 +15,7 @@ import Module from '../core/module.js';
 import Quill from '../core/quill.js';
 import type { Range } from '../core/selection.js';
 import { AlignAttribute, AlignStyle } from '../formats/align.js';
+import { StylesAttributor, Styles } from '../formats/styles.js';
 import { BackgroundStyle } from '../formats/background.js';
 import CodeBlock from '../formats/code.js';
 import { ColorStyle } from '../formats/color.js';
@@ -70,6 +71,7 @@ const STYLE_ATTRIBUTORS = [
   DirectionStyle,
   FontStyle,
   SizeStyle,
+  Styles,
 ].reduce((memo: Record<string, Attributor>, attr) => {
   memo[attr.keyName] = attr;
   return memo;
@@ -435,10 +437,12 @@ function matchAttributor(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
   const attributes = Attributor.keys(node);
   const classes = ClassAttributor.keys(node);
   const styles = StyleAttributor.keys(node);
+  const stylesMap = StylesAttributor.keys(node);
   const formats: Record<string, string | undefined> = {};
   attributes
     .concat(classes)
     .concat(styles)
+    .concat(stylesMap)
     .forEach((name) => {
       let attr = scroll.query(name, Scope.ATTRIBUTE) as Attributor;
       if (attr != null) {
