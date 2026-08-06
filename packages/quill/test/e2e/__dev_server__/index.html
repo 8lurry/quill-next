@@ -64,7 +64,7 @@
         <div id="editor" style="height: 350px"></div>
         <script>
           window.quill = new Quill(document.getElementById('editor'), {
-            modules: { syntax: true, toolbar: '#toolbar-container' },
+            modules: { syntax: true, toolbar: '#toolbar-container', table: true },
             placeholder: 'Compose an epic...',
             theme: 'snow',
           });

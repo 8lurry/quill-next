@@ -3,14 +3,18 @@ import Quill from '../core/quill.js';
 import Module from '../core/module.js';
 import {
   TableCell,
+  TableContainerCell,
   TableRow,
   TableBody,
   TableContainer,
   tableId,
 } from '../formats/table.js';
+import type { BlockEmbed } from '../quill.js';
+import type Block from '../blots/block.js';
 
 class Table extends Module {
   static register() {
+    Quill.register(TableContainerCell);
     Quill.register(TableCell);
     Quill.register(TableRow);
     Quill.register(TableBody);
@@ -54,18 +58,33 @@ class Table extends Module {
     this.quill.setSelection(offset, Quill.sources.SILENT);
   }
 
+  findTableCell(
+    block: Block | BlockEmbed | null,
+  ): TableCell | TableContainerCell | null {
+    while (block != null && block.statics.blotName !== 'scroll') {
+      if (block instanceof TableCell || block instanceof TableContainerCell) {
+        return block;
+      }
+      block = block.parent as Block | BlockEmbed | null;
+    }
+    return null;
+  }
+
   getTable(
     range = this.quill.getSelection(),
-  ): [null, null, null, -1] | [Table, TableRow, TableCell, number] {
+  ):
+    | [null, null, null, -1]
+    | [Table, TableRow, TableCell | TableContainerCell, number] {
     if (range == null) return [null, null, null, -1];
     const [cell, offset] = this.quill.getLine(range.index);
-    if (cell == null || cell.statics.blotName !== TableCell.blotName) {
+    const resolvedCell = this.findTableCell(cell);
+    if (resolvedCell == null) {
       return [null, null, null, -1];
     }
-    const row = cell.parent;
+    const row = resolvedCell.parent;
     const table = row.parent.parent;
     // @ts-expect-error
-    return [table, row, cell, offset];
+    return [table, row, resolvedCell, offset];
   }
 
   insertColumn(offset: number) {
@@ -125,9 +144,12 @@ class Table extends Module {
   insertTable(rows: number, columns: number) {
     const range = this.quill.getSelection();
     if (range == null) return;
+    const cellBlotName = this.quill.scroll.containerFormats
+      ? TableContainerCell.blotName
+      : TableCell.blotName;
     const delta = new Array(rows).fill(0).reduce((memo) => {
       const text = new Array(columns).fill('\n').join('');
-      return memo.insert(text, { table: tableId() });
+      return memo.insert(text, { [cellBlotName]: tableId() });
     }, new Delta().retain(range.index));
     this.quill.updateContents(delta, Quill.sources.USER);
     this.quill.setSelection(range.index, Quill.sources.SILENT);

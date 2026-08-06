@@ -1,6 +1,8 @@
 import { Registry } from 'parchment';
 import type { Attributor } from 'parchment';
 
+import Quill from '../../../src/core.js';
+import type { QuillOptions } from '../../../src/core/quill.js';
 import Block from '../../../src/blots/block.js';
 import Break from '../../../src/blots/break.js';
 import Cursor from '../../../src/blots/cursor.js';
@@ -43,4 +45,19 @@ export const createScroll = (
     emitter,
   });
   return scroll;
+};
+
+export const createQuill = (
+  htmlOrContainer: string | HTMLDivElement,
+  options: QuillOptions,
+) => {
+  let container: HTMLDivElement;
+  if (typeof htmlOrContainer === 'string') {
+    container = document.body.appendChild(document.createElement('div'));
+    container.innerHTML = normalizeHTML(htmlOrContainer as unknown as string);
+  } else {
+    container = htmlOrContainer;
+  }
+  const quill = new Quill(container, options);
+  return quill;
 };

@@ -1,19 +1,18 @@
 import { cloneDeep, isEqual, merge } from 'lodash-es';
-import {
-  ContainerBlot,
-  LeafBlot,
-  EmbedBlot,
-  Scope,
-  ParentBlot,
-} from 'parchment';
+import { LeafBlot, EmbedBlot, Scope, ParentBlot, BlockBlot } from 'parchment';
 import type { Blot } from 'parchment';
 import Delta, { AttributeMap, Op } from '@quill-next/delta-es';
-import Block, { BlockEmbed, bubbleFormats } from '../blots/block.js';
+import Block, {
+  BlockEmbed,
+  bubbleFormats,
+  serializeContainers,
+} from '../blots/block.js';
 import Break from '../blots/break.js';
 import CursorBlot from '../blots/cursor.js';
 import type Scroll from '../blots/scroll.js';
 import TextBlot, { escapeText } from '../blots/text.js';
 import { Range } from './selection.js';
+import { extractContainerAttributes } from './container.js';
 
 const ASCII = /^[ -~]*$/;
 
@@ -38,17 +37,14 @@ class Editor {
     const normalizedDelta = normalizeDelta(delta);
     const deleteDelta = new Delta();
     const normalizedOps = splitOpLines(normalizedDelta.ops.slice());
-
-    const containerAttributes: {
-      name: string;
-      value: unknown;
-      index: number;
-      length?: number;
-    }[] = [];
-
     normalizedOps.reduce((index, op) => {
       const length = Op.length(op);
-      let attributes = op.attributes || {};
+      // let attributes = op.attributes || {};
+      const { formats: deltaFormats, containers } = extractContainerAttributes(
+        op.attributes,
+      );
+
+      let attributes = deltaFormats;
       let isImplicitNewlinePrepended = false;
       let isImplicitNewlineAppended = false;
       if (op.insert != null) {
@@ -115,21 +111,23 @@ class Editor {
         }
       }
       Object.keys(attributes).forEach((name) => {
-        const format = this.scroll.query(name, Scope.BLOCK);
-        if (
-          format != null &&
-          (format as Function).prototype instanceof ContainerBlot
-        ) {
-          containerAttributes.push({
-            name,
-            value: attributes[name],
-            index,
-            length,
-          });
-          return;
-        }
         this.scroll.formatAt(index, length, name, attributes[name]);
       });
+
+      const hasContainerAttribute =
+        op.attributes != null &&
+        Object.prototype.hasOwnProperty.call(op.attributes, 'container');
+
+      if (this.scroll.containerFormats && hasContainerAttribute) {
+        const end = index + length - 1;
+
+        const [line] = this.scroll.line(end);
+
+        if (line instanceof ParentBlot) {
+          line.restoreContainers(containers);
+        }
+      }
+
       const prependedLength = isImplicitNewlinePrepended ? 1 : 0;
       const addedLength = isImplicitNewlineAppended ? 1 : 0;
       scrollLength += prependedLength + addedLength;
@@ -146,11 +144,6 @@ class Editor {
     }, 0);
     this.scroll.batchEnd();
     this.scroll.optimize();
-
-    containerAttributes.forEach(({ name, value, index, length }) => {
-      this.scroll.formatAt(index, length != null ? length : 1, name, value);
-    });
-
     return this.update(normalizedDelta);
   }
 
@@ -193,7 +186,13 @@ class Editor {
 
   getDelta(): Delta {
     return this.scroll.lines().reduce((delta, line) => {
-      return delta.concat(line.delta());
+      let lineDelta = line.delta();
+
+      if (this.scroll.containerFormats && line instanceof BlockBlot) {
+        lineDelta = serializeContainers(line, lineDelta);
+      }
+
+      return delta.concat(lineDelta);
     }, new Delta());
   }
 

@@ -4,9 +4,10 @@ import {
   EmbedBlot,
   LeafBlot,
   Scope,
+  ContainerBlot,
 } from 'parchment';
 import type { Blot, Parent } from 'parchment';
-import Delta from '@quill-next/delta-es';
+import Delta, { type Op } from '@quill-next/delta-es';
 import Break from './break.js';
 import Inline from './inline.js';
 import TextBlot from './text.js';
@@ -231,9 +232,68 @@ function blockDelta(blot: BlockBlot, filter = true) {
       if (leaf.length() === 0) {
         return delta;
       }
-      return delta.insert(leaf.value(), bubbleFormats(leaf, {}, filter));
+      const formats = bubbleFormats(leaf, {}, filter);
+      return delta.insert(leaf.value(), formats);
     }, new Delta())
     .insert('\n', bubbleFormats(blot));
+}
+
+export function serializeContainers(
+  line: Block,
+  delta: Delta,
+  boundary?: Blot,
+): Delta {
+  const containers = line.serializeContainers(boundary);
+  if (!containers.length) {
+    return delta;
+  }
+
+  // Modify the last op (the newline)
+  const [ops, newline] = normalizeLastOp(delta);
+  if (newline == null) {
+    return ops as Delta;
+  }
+
+  newline.attributes = {
+    ...(newline.attributes ?? {}),
+    container: containers,
+  };
+
+  return new Delta(ops);
+}
+
+export function normalizeLastOp(delta: Delta): [Delta, null] | [Op[], Op] {
+  const ops = delta.ops;
+  const last = ops[ops.length - 1];
+
+  if (
+    last == null ||
+    typeof last.insert !== 'string' ||
+    !last.insert.endsWith('\n')
+  ) {
+    return [delta, null];
+  }
+
+  // Normalize the ending so the last op is always '\n'
+  const text = last.insert;
+  if (text !== '\n') {
+    ops.pop();
+
+    if (text.length > 1) {
+      ops.push({
+        insert: text.slice(0, -1),
+        attributes: last.attributes,
+      });
+    }
+
+    ops.push({
+      insert: '\n',
+      attributes: last.attributes,
+    });
+  }
+
+  // Now the last op is guaranteed to be the newline.
+  return [ops, ops[ops.length - 1]];
 }
 
 function bubbleFormats(
@@ -242,10 +302,15 @@ function bubbleFormats(
   filter = true,
 ): Record<string, unknown> {
   if (blot == null) return formats;
+
+  if (blot.scroll.containerFormats && blot instanceof ContainerBlot) {
+    return formats;
+  }
+
   if ('formats' in blot && typeof blot.formats === 'function') {
     formats = {
       ...formats,
-      ...blot.formats(),
+      ...(blot.formats() || {}),
     };
     if (filter) {
       // exclude syntax highlighting from deltas and getFormat()

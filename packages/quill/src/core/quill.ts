@@ -60,14 +60,21 @@ export interface QuillOptions {
    * @default null
    */
   formats?: string[] | null;
+
+  /**
+   * Whether to leave formatting to containers when they own some.
+   */
+  containerFormats?: boolean;
 }
 
 /**
  * Similar to QuillOptions, but with all properties expanded to their default values,
  * and all selectors resolved to HTMLElements.
  */
-export interface ExpandedQuillOptions
-  extends Omit<QuillOptions, 'theme' | 'formats'> {
+export interface ExpandedQuillOptions extends Omit<
+  QuillOptions,
+  'theme' | 'formats'
+> {
   theme: ThemeConstructor;
   registry: Parchment.Registry;
   container: HTMLElement;
@@ -223,6 +230,7 @@ class Quill {
     this.scroll = new ScrollBlot(this.options.registry, this.root, {
       emitter: this.emitter,
     }) as Scroll;
+    this.scroll.containerFormats = !!this.options.containerFormats;
     this.editor = new Editor(this.scroll);
     this.selection = new Selection(this.scroll, this.emitter);
     this.composition = new Composition(this.scroll, this.emitter);
@@ -770,6 +778,26 @@ class Quill {
 
   destroy() {
     this.theme.destroy();
+  }
+
+  getContainerFormats(
+    range?: Range,
+    forceMerge = false,
+  ): Parchment.SerializedContainer[] {
+    if (range == null) {
+      range = this.getSelection() as Range;
+    }
+    if (range == null) {
+      return [];
+    }
+
+    const [line] = this.getLine(range.index);
+
+    if (!(line instanceof Parchment.BlockBlot)) {
+      return [];
+    }
+
+    return line.serializeContainers(forceMerge ? line : undefined);
   }
 }
 

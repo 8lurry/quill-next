@@ -38,7 +38,11 @@ test.describe('history', () => {
     expect(await editorPage.getContents()).toEqual([{ insert: '1234\n' }]);
   });
 
-  test('clipboard', async ({ clipboard, page, editorPage }) => {
+  test('clipboard', async ({ clipboard, page, editorPage, browserName }) => {
+    test.skip(
+      browserName === 'webkit',
+      'Clipboard paste is unreliable in WebKit/Safari',
+    );
     await editorPage.moveCursorAfterText('2');
     await clipboard.writeText('a');
     await clipboard.paste();

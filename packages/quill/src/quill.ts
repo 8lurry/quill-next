@@ -9,6 +9,8 @@ import type {
 
 import { AlignClass, AlignStyle } from './formats/align.js';
 import { Styles } from './formats/styles.js';
+import { Classes } from './formats/classes.js';
+import { ContainerAttributorInstance } from './formats/container.js';
 import {
   DirectionAttribute,
   DirectionClass,
@@ -72,6 +74,8 @@ Quill.register(
 
     'attributors/style/align': AlignStyle,
     'attributors/styles': Styles,
+    'attributors/classes': Classes,
+    'attributors/container': ContainerAttributorInstance,
     'attributors/style/background': BackgroundStyle,
     'attributors/style/color': ColorStyle,
     'attributors/style/direction': DirectionStyle,
@@ -88,6 +92,8 @@ Quill.register(
     'formats/indent': Indent,
 
     'formats/styles': Styles,
+    'formats/classes': Classes,
+    'formats/container': ContainerAttributorInstance,
 
     'formats/background': BackgroundStyle,
     'formats/color': ColorStyle,

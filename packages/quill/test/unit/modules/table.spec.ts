@@ -5,11 +5,13 @@ import { createRegistry } from '../__helpers__/factory.js';
 import {
   TableBody,
   TableCell,
+  TableContainerCell,
   TableContainer,
   TableRow,
 } from '../../../src/formats/table.js';
 import { normalizeHTML } from '../__helpers__/utils.js';
 import Table from '../../../src/modules/table.js';
+import { Classes } from '../../../src/formats/classes.js';
 
 const createQuill = (html: string) => {
   Quill.register({ 'modules/table': Table }, true);
@@ -17,7 +19,13 @@ const createQuill = (html: string) => {
   container.innerHTML = normalizeHTML(html);
   const quill = new Quill(container, {
     modules: { table: true },
-    registry: createRegistry([TableBody, TableCell, TableContainer, TableRow]),
+    registry: createRegistry([
+      TableBody,
+      TableCell,
+      TableContainerCell,
+      TableContainer,
+      TableRow,
+    ]),
   });
   return quill;
 };
@@ -220,64 +228,6 @@ describe('Table Module', () => {
     const setupWithHtml = (html: string) => {
       Quill.register({ 'modules/table': Table }, true);
 
-      class CustomTableRow extends TableRow {
-        static create(value: string) {
-          const node = super.create() as HTMLElement;
-          if (value) {
-            node.className = value;
-          }
-          return node;
-        }
-
-        static formats(domNode: HTMLElement) {
-          return domNode.className;
-        }
-
-        formats() {
-          const formats = CustomTableRow.formats(this.domNode);
-          return { [CustomTableRow.blotName]: formats };
-        }
-
-        format(name: string, value: string) {
-          if (name === CustomTableRow.blotName) {
-            if (value == null || value === '') {
-              this.domNode.removeAttribute('class');
-            } else {
-              this.domNode.className = value;
-            }
-          }
-        }
-      }
-
-      class CustomTableContainer extends TableContainer {
-        static create(value: string) {
-          const node = super.create() as HTMLElement;
-          if (value) {
-            node.className = value;
-          }
-          return node;
-        }
-
-        static formats(domNode: HTMLElement) {
-          return domNode.className;
-        }
-
-        formats() {
-          const formats = CustomTableContainer.formats(this.domNode);
-          return { [CustomTableContainer.blotName]: formats };
-        }
-
-        format(name: string, value: string) {
-          if (name === CustomTableContainer.blotName) {
-            if (value == null || value === '') {
-              this.domNode.removeAttribute('class');
-            } else {
-              this.domNode.className = value;
-            }
-          }
-        }
-      }
-
       const container = document.body.appendChild(
         document.createElement('div'),
       );
@@ -287,9 +237,12 @@ describe('Table Module', () => {
         registry: createRegistry([
           TableBody,
           TableCell,
-          CustomTableContainer,
-          CustomTableRow,
+          TableContainerCell,
+          TableContainer,
+          TableRow,
+          Classes,
         ]),
+        containerFormats: true,
       });
       return quill;
     };
@@ -365,7 +318,10 @@ describe('Table Module', () => {
       const [, row] = tableModule.getTable();
       const index = row?.length();
 
-      quill.formatLine(index as number, 1, 'table-row', 'new-class-name');
+      quill.formatLine(index as number, 1, 'container', {
+        level: 0,
+        formats: { classes: { 'new-class-name': true } },
+      });
       expect(quill.root).toEqualHTML(
         `
         <table class="table">
@@ -387,12 +343,16 @@ describe('Table Module', () => {
       `,
         { ignoreAttrs: ['data-row'] },
       );
-      quill.formatLine(
-        0,
-        1,
-        'table-container',
-        'new-table-class other-table-class',
-      );
+      quill.formatLine(0, 1, 'container', {
+        level: 2,
+        formats: {
+          classes: {
+            'new-table-class': true,
+            'other-table-class': true,
+            table: false,
+          },
+        },
+      });
       expect(quill.root).toEqualHTML(
         `
         <table class="new-table-class other-table-class">
@@ -414,7 +374,12 @@ describe('Table Module', () => {
       `,
         { ignoreAttrs: ['data-row'] },
       );
-      quill.formatLine(index as number, 1, 'table-container', '');
+      quill.formatLine(index as number, 1, 'container', {
+        level: 2,
+        formats: {
+          classes: false,
+        },
+      });
       expect(quill.root).toEqualHTML(
         `
         <table>
@@ -463,8 +428,79 @@ describe('Table Module', () => {
       quill.updateContents(
         new Delta()
           .retain(quill.getLength())
-          .insert('\n\n', { table: 'row-lo87' })
-          .insert('\n\n', { table: 'row-54yt', 'table-row': 'custom-row' }),
+          .insert('\n', {
+            table: 'row-lo87',
+            container: [
+              {
+                action: 'REUSE',
+                blot: 'table-row',
+              },
+              {
+                action: 'REUSE',
+                blot: 'table-body',
+              },
+              {
+                action: 'REUSE',
+                blot: 'table-container',
+              },
+            ],
+          })
+          .insert('\n', {
+            table: 'row-lo87',
+            container: [
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-row',
+              },
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-body',
+              },
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-container',
+              },
+            ],
+          })
+          .insert('\n', {
+            table: 'row-54yt',
+            container: [
+              {
+                action: 'REUSE',
+                blot: 'table-row',
+                formats: {
+                  classes: {
+                    'custom-row': true,
+                  },
+                },
+              },
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-body',
+              },
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-container',
+              },
+            ],
+          })
+          .insert('\n', {
+            table: 'row-54yt',
+            container: [
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-row',
+              },
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-body',
+              },
+              {
+                action: 'MERGE_TO_PREV',
+                blot: 'table-container',
+              },
+            ],
+          }),
       );
       expect(quill.root.innerHTML).toEqualHTML(
         normalizeHTML(`
@@ -478,6 +514,174 @@ describe('Table Module', () => {
           </tbody>
         </table>
       `),
+        { ignoreAttrs: ['data-row'] },
+      );
+    });
+  });
+
+  describe('table with a cell as a container', () => {
+    test('insert table', () => {
+      const quill = createQuill('<p><br></p>');
+      quill.scroll.containerFormats = true;
+      const table = quill.getModule('table') as Table;
+      quill.setSelection(0);
+      table.insertTable(2, 3);
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        normalizeHTML(
+          `
+          <table>
+            <tbody>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+            </tbody>
+          </table>
+          <p><br></p>
+          `,
+        ),
+        { ignoreAttrs: ['data-row'] },
+      );
+    });
+
+    test('insert delete rows and columns', () => {
+      const quill = createQuill('<p><br></p>');
+      quill.scroll.containerFormats = true;
+      const table = quill.getModule('table') as Table;
+      quill.setSelection(0);
+      table.insertTable(2, 3);
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        normalizeHTML(
+          `
+          <table>
+            <tbody>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+            </tbody>
+          </table>
+          <p><br></p>
+          `,
+        ),
+        { ignoreAttrs: ['data-row'] },
+      );
+      quill.setSelection(2);
+      table.insertRowAbove();
+      table.insertRowBelow();
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        normalizeHTML(
+          `
+          <table>
+            <tbody>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+              <tr>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+                <td class="ql-cell-as-container"><p><br></p></td>
+              </tr>
+            </tbody>
+          </table>
+          <p><br></p>
+          `,
+        ),
+        { ignoreAttrs: ['data-row'] },
+      );
+
+      table.insertColumnLeft();
+      table.insertColumnRight();
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        `
+        <table>
+          <tbody>
+            <tr>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+            </tr>
+            <tr>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+            </tr>
+            <tr>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+            </tr>
+            <tr>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+            </tr>
+          </tbody>
+        </table>
+        <p><br></p>
+        `,
+        { ignoreAttrs: ['data-row'] },
+      );
+
+      table.deleteRow();
+      table.deleteRow();
+      table.deleteColumn();
+      table.deleteColumn();
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        `
+        <table>
+          <tbody>
+            <tr>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+            </tr>
+            <tr>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+              <td class="ql-cell-as-container"><p><br></p></td>
+            </tr>
+          </tbody>
+        </table>
+        <p><br></p>
+        `,
         { ignoreAttrs: ['data-row'] },
       );
     });

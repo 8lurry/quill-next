@@ -1,14 +1,20 @@
-import type { ScrollBlot } from 'parchment';
+import type {
+  BlotConstructor,
+  ScrollBlot,
+  SerializedContainer,
+} from 'parchment';
 import {
   Attributor,
   BlockBlot,
   ClassAttributor,
+  ContainerBlot,
   EmbedBlot,
   Scope,
   StyleAttributor,
+  containerRestoreAction,
 } from 'parchment';
 import Delta from '@quill-next/delta-es';
-import { BlockEmbed } from '../blots/block.js';
+import { BlockEmbed, normalizeLastOp } from '../blots/block.js';
 import type { EmitterSource } from '../core/emitter.js';
 import logger from '../core/logger.js';
 import Module from '../core/module.js';
@@ -16,6 +22,7 @@ import Quill from '../core/quill.js';
 import type { Range } from '../core/selection.js';
 import { AlignAttribute, AlignStyle } from '../formats/align.js';
 import { StylesAttributor, Styles } from '../formats/styles.js';
+import { ClassesAttributor, Classes } from '../formats/classes.js';
 import { BackgroundStyle } from '../formats/background.js';
 import CodeBlock from '../formats/code.js';
 import { ColorStyle } from '../formats/color.js';
@@ -50,11 +57,20 @@ const CLIPBOARD_CONFIG: [Selector, Matcher][] = [
   ['ol, ul', matchList],
   ['pre', matchCodeBlock],
   ['tr', matchTable],
+  ['td', matchTableCell],
   ['b', createMatchAlias('bold')],
   ['i', createMatchAlias('italic')],
   ['strike', createMatchAlias('strike')],
   ['style', matchIgnore],
 ];
+
+const CLASS_ATTRIBUTORS = [Classes].reduce(
+  (memo: Record<string, Attributor>, attr) => {
+    memo[attr.keyName] = attr;
+    return memo;
+  },
+  {},
+);
 
 const ATTRIBUTE_ATTRIBUTORS = [AlignAttribute, DirectionAttribute].reduce(
   (memo: Record<string, Attributor>, attr) => {
@@ -434,15 +450,29 @@ function createMatchAlias(format: string) {
 }
 
 function matchAttributor(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
+  if (scroll.containerFormats) {
+    const match = scroll.query(node);
+
+    if (
+      match &&
+      'prototype' in match &&
+      match.prototype instanceof ContainerBlot
+    ) {
+      return delta;
+    }
+  }
+
   const attributes = Attributor.keys(node);
   const classes = ClassAttributor.keys(node);
   const styles = StyleAttributor.keys(node);
-  const stylesMap = StylesAttributor.keys(node);
+  const stylesMap = scroll.containerFormats ? StylesAttributor.keys(node) : [];
+  const klasses = scroll.containerFormats ? ClassesAttributor.keys(node) : [];
   const formats: Record<string, string | undefined> = {};
   attributes
     .concat(classes)
     .concat(styles)
     .concat(stylesMap)
+    .concat(klasses)
     .forEach((name) => {
       let attr = scroll.query(name, Scope.ATTRIBUTE) as Attributor;
       if (attr != null) {
@@ -452,6 +482,12 @@ function matchAttributor(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
       attr = ATTRIBUTE_ATTRIBUTORS[name];
       if (attr != null && (attr.attrName === name || attr.keyName === name)) {
         formats[attr.attrName] = attr.value(node) || undefined;
+      }
+      if (scroll.containerFormats) {
+        attr = CLASS_ATTRIBUTORS[name];
+        if (attr != null && (attr.attrName === name || attr.keyName === name)) {
+          formats[attr.attrName] = attr.value(node) || undefined;
+        }
       }
       attr = STYLE_ATTRIBUTORS[name];
       if (attr != null && (attr.attrName === name || attr.keyName === name)) {
@@ -482,20 +518,34 @@ function matchBlot(node: Node, delta: Delta, scroll: ScrollBlot) {
     }
   } else {
     // @ts-expect-error
-    if (match.prototype instanceof BlockBlot && !deltaEndsWith(delta, '\n')) {
-      delta.insert('\n');
+    if (match.prototype instanceof BlockBlot) {
+      if (!deltaEndsWith(delta, '\n')) {
+        delta.insert('\n');
+      }
+
+      if (scroll.containerFormats) {
+        const containers = serializeContainerDOM(node, scroll);
+        if (containers.length > 0) {
+          const [ops, newline] = normalizeLastOp(delta);
+          if (newline !== null) {
+            newline.attributes = {
+              ...(newline.attributes || {}),
+              container: containers,
+            };
+
+            delta = new Delta(ops);
+          }
+        }
+      }
     }
     if (
       'blotName' in match &&
       'formats' in match &&
-      typeof match.formats === 'function'
+      typeof match.formats === 'function' &&
+      !(scroll.containerFormats && match.prototype instanceof ContainerBlot)
     ) {
-      return applyFormat(
-        delta,
-        match.blotName,
-        match.formats(node, scroll),
-        scroll,
-      );
+      const formats = match.formats(node, scroll);
+      return applyFormat(delta, match.blotName, formats, scroll);
     }
   }
   return delta;
@@ -666,7 +716,32 @@ function matchTable(
   if (table != null) {
     const rows = Array.from(table.querySelectorAll('tr'));
     const row = rows.indexOf(node) + 1;
-    return applyFormat(delta, 'table', row, scroll);
+    return applyFormat(delta, 'table', row, scroll).reduce((newDelta, op) => {
+      if (!op.insert) return newDelta;
+      if (
+        !op.attributes ||
+        !op.attributes.table ||
+        op.attributes.table !== CELL_OVERRIDE_PLACEHOLDER
+      ) {
+        return newDelta.push(op);
+      }
+      delete op.attributes.table;
+      return newDelta.insert(op.insert, { ...op.attributes });
+    }, new Delta());
+  }
+  return delta;
+}
+
+const CELL_OVERRIDE_PLACEHOLDER = 'NotARegularTableCell';
+
+function matchTableCell(
+  node: HTMLTableCellElement,
+  delta: Delta,
+  scroll: ScrollBlot,
+) {
+  const blotConstructor = scroll.query(node) as BlotConstructor;
+  if (blotConstructor && blotConstructor.blotName !== 'table') {
+    return applyFormat(delta, 'table', CELL_OVERRIDE_PLACEHOLDER, scroll);
   }
   return delta;
 }
@@ -713,6 +788,95 @@ function matchText(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
     text = text.replaceAll('\u00a0', ' ');
   }
   return delta.insert(text);
+}
+
+function serializeContainerDOM(
+  node: Node,
+  scroll: ScrollBlot,
+): SerializedContainer[] {
+  const containers: SerializedContainer[] = [];
+
+  let current = node.parentElement;
+  let blockCandidate = node;
+
+  let mergerFound = false;
+
+  while (current && current !== scroll.domNode) {
+    const blot = scroll.query(current);
+
+    // @ts-expect-error
+    if (blot && blot.prototype instanceof ContainerBlot) {
+      // @ts-expect-error
+      const blotName = blot.blotName;
+
+      if (!mergerFound) {
+        mergerFound = hasPreviousBlockBlot(blockCandidate, scroll);
+      }
+
+      const container: SerializedContainer = {
+        allowSplit: true,
+        blot: blotName,
+        action: containerRestoreAction.MERGE_TO_PREV,
+      };
+
+      if (!mergerFound) {
+        container.action = containerRestoreAction.REUSE;
+        // @ts-expect-error
+        const formats = blot.formats(current, scroll);
+        if (formats && Object.keys(formats).length) {
+          container.formats = formats;
+        }
+      }
+
+      containers.push(container);
+    } else {
+      break;
+    }
+
+    blockCandidate = current;
+
+    current = current.parentElement;
+  }
+
+  return containers;
+}
+
+function hasPreviousBlockBlot(node: Node, scroll: ScrollBlot): boolean {
+  let current: Node | null = node.previousSibling;
+
+  while (current) {
+    if (hasBlockBlotInSubtree(current, scroll)) {
+      return true;
+    }
+    current = current.previousSibling;
+  }
+
+  return false;
+}
+
+function hasBlockBlotInSubtree(node: Node, scroll: ScrollBlot): boolean {
+  const stack: Node[] = [node];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current == null) {
+      continue;
+    }
+
+    const match = scroll.query(current);
+
+    // @ts-expect-error
+    if (match && match.prototype instanceof BlockBlot) {
+      return true;
+    }
+
+    const children = current.childNodes;
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      stack.push(children[i]);
+    }
+  }
+
+  return false;
 }
 
 export {

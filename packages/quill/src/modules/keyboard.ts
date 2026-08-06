@@ -1,13 +1,20 @@
 import { cloneDeep, isEqual } from 'lodash-es';
 import Delta, { AttributeMap } from '@quill-next/delta-es';
-import { EmbedBlot, Scope, TextBlot } from 'parchment';
-import type { Blot, BlockBlot } from 'parchment';
+import {
+  EmbedBlot,
+  Scope,
+  TextBlot,
+  BlockBlot,
+  GenericContainer,
+} from 'parchment';
+import type { Blot, ParentBlot, SerializedContainer } from 'parchment';
 import Quill from '../core/quill.js';
 import logger from '../core/logger.js';
 import Module from '../core/module.js';
 import type { BlockEmbed } from '../blots/block.js';
 import type { Range } from '../core/selection.js';
 import { SOFT_BREAK_CHARACTER } from '../blots/soft-break.js';
+import type Scroll from '../blots/scroll.js';
 
 const debug = logger('quill:keyboard');
 
@@ -15,6 +22,14 @@ const SHORTKEY =
   typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform)
     ? 'metaKey'
     : 'ctrlKey';
+
+interface ContextContainer {
+  blot: ParentBlot | string;
+  offset?: number; // cursor offset relative to this container
+  length?: number; // container content length
+  prefix?: RegExp;
+  suffix?: RegExp;
+}
 
 export interface Context {
   collapsed: boolean;
@@ -25,10 +40,12 @@ export interface Context {
   format: Record<string, unknown>;
   event: KeyboardEvent;
   line: BlockEmbed | BlockBlot;
+  container: SerializedContainer[] | null;
 }
 
-export interface BindingObject
-  extends Partial<Omit<Context, 'prefix' | 'suffix' | 'format'>> {
+export interface BindingObject extends Partial<
+  Omit<Context, 'prefix' | 'suffix' | 'format' | 'container'>
+> {
   key: number | string | string[];
   shortKey?: boolean | null;
   shiftKey?: boolean | null;
@@ -38,6 +55,8 @@ export interface BindingObject
   prefix?: RegExp;
   suffix?: RegExp;
   format?: Record<string, unknown> | string[];
+  container?: ContextContainer;
+  exclusiveContainer?: boolean;
   handler?: (
     this: { quill: Quill },
     range: Range,
@@ -49,8 +68,10 @@ export interface BindingObject
 
 export type Binding = BindingObject | string | number;
 
-export interface NormalizedBinding
-  extends Omit<BindingObject, 'key' | 'shortKey'> {
+export interface NormalizedBinding extends Omit<
+  BindingObject,
+  'key' | 'shortKey'
+> {
   key: string | number;
 }
 
@@ -222,7 +243,11 @@ class Keyboard extends Module<KeyboardOptions> {
         prefix: prefixText,
         suffix: suffixText,
         event: evt,
+        container: this.quill.getContainerFormats(range, evt.key === 'Enter'),
       };
+      const { scroll } = this.quill;
+      const { containerFormats } = scroll;
+
       const prevented = matches.some((binding) => {
         if (
           binding.collapsed != null &&
@@ -230,42 +255,104 @@ class Keyboard extends Module<KeyboardOptions> {
         ) {
           return false;
         }
-        if (binding.empty != null && binding.empty !== curContext.empty) {
+        let ancestorEmpty = curContext.empty,
+          ancestorOffset = curContext.offset,
+          ancestorPrefix = curContext.prefix,
+          ancestorSuffix = curContext.suffix,
+          containerMatch = !binding.container || !containerFormats,
+          ancestor;
+
+        if (containerFormats && binding.container) {
+          const { blot } = binding.container;
+          const [a, aOffset] = scroll.ancestorAt(
+            range.index,
+            blot as string | typeof ParentBlot,
+          );
+          if (a) {
+            ancestor = a;
+            containerMatch = true;
+            const ancestorStart = ancestor.offset(scroll);
+            const ancestorLength = ancestor.length();
+            ancestorEmpty = ancestorEmpty && ancestorLength <= 1;
+            ancestorOffset = aOffset;
+            ancestorPrefix = this.quill.getText(
+              ancestorStart,
+              range.index - ancestorStart,
+            );
+            ancestorSuffix = this.quill.getText(
+              range.index + range.length,
+              ancestorStart + ancestorLength - (range.index + range.length) - 1, // The last -1 is for the trailing newline character
+            );
+          }
+        }
+        if (binding.empty != null && binding.empty !== ancestorEmpty) {
           return false;
         }
-        if (binding.offset != null && binding.offset !== curContext.offset) {
+        if (binding.offset != null && binding.offset !== ancestorOffset) {
           return false;
         }
+        if (binding.prefix != null && !binding.prefix.test(ancestorPrefix)) {
+          return false;
+        }
+        if (binding.suffix != null && !binding.suffix.test(ancestorSuffix)) {
+          return false;
+        }
+
+        if (containerFormats && binding.container) {
+          const { offset, length, prefix, suffix } = binding.container;
+          if (ancestor) {
+            const ancestorLength = ancestor.length();
+
+            if (offset != null && ancestorOffset !== offset) {
+              containerMatch = false;
+            }
+            if (length != null && ancestorLength !== length) {
+              containerMatch = false;
+            }
+            if (prefix != null && !prefix.test(ancestorPrefix)) {
+              containerMatch = false;
+            }
+            if (suffix != null && !suffix.test(ancestorSuffix)) {
+              containerMatch = false;
+            }
+          }
+        }
+        if (containerFormats && binding.exclusiveContainer && containerMatch) {
+          return (
+            // @ts-expect-error Fix me later
+            binding.handler.call(this, range, curContext, binding) !== true
+          );
+        }
+        let formatMatch = true;
         if (Array.isArray(binding.format)) {
           // any format is present
           if (binding.format.every((name) => curContext.format[name] == null)) {
-            return false;
+            formatMatch = false;
           }
         } else if (typeof binding.format === 'object') {
           // all formats must match
-          if (
-            !Object.keys(binding.format).every((name) => {
-              // @ts-expect-error Fix me later
-              if (binding.format[name] === true)
-                return curContext.format[name] != null;
-              // @ts-expect-error Fix me later
-              if (binding.format[name] === false)
-                return curContext.format[name] == null;
-              // @ts-expect-error Fix me later
-              return isEqual(binding.format[name], curContext.format[name]);
-            })
-          ) {
-            return false;
-          }
+          formatMatch = Object.keys(binding.format).every((name) => {
+            // @ts-expect-error Fix me later
+            if (binding.format[name] === true)
+              return curContext.format[name] != null;
+            // @ts-expect-error Fix me later
+            if (binding.format[name] === false)
+              return curContext.format[name] == null;
+            // @ts-expect-error Fix me later
+            return isEqual(binding.format[name], curContext.format[name]);
+          });
         }
-        if (binding.prefix != null && !binding.prefix.test(curContext.prefix)) {
-          return false;
+
+        if (
+          (containerMatch && formatMatch) ||
+          (binding.exclusiveContainer && formatMatch)
+        ) {
+          return (
+            // @ts-expect-error Fix me later
+            binding.handler.call(this, range, curContext, binding) !== true
+          );
         }
-        if (binding.suffix != null && !binding.suffix.test(curContext.suffix)) {
-          return false;
-        }
-        // @ts-expect-error Fix me later
-        return binding.handler.call(this, range, curContext, binding) !== true;
+        return false;
       });
       if (prevented) {
         evt.preventDefault();
@@ -279,27 +366,42 @@ class Keyboard extends Module<KeyboardOptions> {
       ? 2
       : 1;
     if (range.index === 0 || this.quill.getLength() <= 1) return;
-    let formats = {};
     const [line] = this.quill.getLine(range.index);
     let delta = new Delta().retain(range.index - length).delete(length);
     if (context.offset === 0) {
-      // Always deleting newline here, length always 1
-      const [prev] = this.quill.getLine(range.index - 1);
-      if (prev) {
-        const isPrevLineEmpty =
-          prev.statics.blotName === 'block' && prev.length() <= 1;
-        if (!isPrevLineEmpty) {
-          // @ts-expect-error Fix me later
-          const curFormats = line.formats();
-          const prevFormats = this.quill.getFormat(range.index - 1, 1);
-          formats = AttributeMap.diff(curFormats, prevFormats) || {};
-          if (Object.keys(formats).length > 0) {
-            // line.length() - 1 targets \n in line, another -1 for newline being deleted
-            const formatDelta = new Delta()
-              // @ts-expect-error Fix me later
-              .retain(range.index + line.length() - 2)
-              .retain(1, formats);
-            delta = delta.compose(formatDelta);
+      if (
+        line &&
+        line.scroll.containerFormats &&
+        line instanceof BlockBlot &&
+        line.parent instanceof GenericContainer &&
+        line.parent.allowSplit() &&
+        (!line.prev ||
+          line.prev instanceof GenericContainer ||
+          line.length() <= 1)
+      ) {
+        const containers = line.serializeContainers().slice(1);
+        delta = new Delta()
+          .retain(range.index + line.length() - 1)
+          .retain(1, { container: containers });
+      } else {
+        // Always deleting newline here, length always 1
+        const [prev] = this.quill.getLine(range.index - 1);
+        if (prev) {
+          const isPrevLineEmpty =
+            prev.statics.blotName === 'block' && prev.length() <= 1;
+          if (!isPrevLineEmpty) {
+            const formats = mergeDeltaAttributes(
+              line as BlockBlot,
+              prev as BlockBlot,
+            );
+            if (Object.keys(formats).length > 0) {
+              // line.length() - 1 targets \n in line, another -1 for newline being deleted
+              const formatDelta = new Delta()
+                // @ts-expect-error Fix me later
+                .retain(range.index + line.length() - 2)
+                .retain(1, formats);
+              delta = delta.compose(formatDelta);
+            }
           }
         }
       }
@@ -321,10 +423,7 @@ class Keyboard extends Module<KeyboardOptions> {
     if (context.offset >= line.length() - 1) {
       const [next] = this.quill.getLine(range.index + 1);
       if (next) {
-        // @ts-expect-error Fix me later
-        const curFormats = line.formats();
-        const nextFormats = this.quill.getFormat(range.index, 1);
-        formats = AttributeMap.diff(curFormats, nextFormats) || {};
+        formats = mergeDeltaAttributes(line as BlockBlot, next as BlockBlot);
         if (Object.keys(formats).length > 0) {
           delta = delta.retain(next.length() - 1).retain(1, formats);
         }
@@ -352,10 +451,38 @@ class Keyboard extends Module<KeyboardOptions> {
       },
       {},
     );
-    const delta = new Delta()
-      .retain(range.index)
-      .delete(range.length)
-      .insert('\n', lineFormats);
+    let delta = new Delta().retain(range.index);
+    let containers: SerializedContainer[] = [];
+    const [line, lineOffset] = this.quill.getLine(range.index);
+    if (
+      this.quill.scroll.containerFormats &&
+      range.length === 0 &&
+      line instanceof BlockBlot &&
+      line.parent instanceof GenericContainer &&
+      lineOffset === 0 &&
+      line.length() <= 1 &&
+      line.parent.allowSplit()
+    ) {
+      containers = [...containers];
+      while (containers.length) {
+        if (containers[containers.length - 1].allowSplit) {
+          containers.pop();
+        } else {
+          break;
+        }
+      }
+      delta = delta.retain(line.length(), {
+        ...lineFormats,
+        container: containers,
+      });
+    } else {
+      delta = delta.delete(range.length);
+      containers = context.container as SerializedContainer[];
+      delta = delta.insert('\n', {
+        ...lineFormats,
+        container: containers,
+      });
+    }
     this.quill.updateContents(delta, Quill.sources.USER);
     this.quill.setSelection(range.index + 1, Quill.sources.SILENT);
     this.quill.focus();
@@ -512,6 +639,10 @@ const defaultOptions: KeyboardOptions = {
       format: ['table'],
       collapsed: true,
       offset: 0,
+      exclusiveContainer: true,
+      container: {
+        blot: 'table-container-cell',
+      },
       handler() {},
     },
     'table delete': {
@@ -519,6 +650,10 @@ const defaultOptions: KeyboardOptions = {
       format: ['table'],
       collapsed: true,
       suffix: /^$/,
+      exclusiveContainer: true,
+      container: {
+        blot: 'table-container-cell',
+      },
       handler() {},
     },
     'table enter': {
@@ -819,9 +954,10 @@ function deleteRange({ quill, range }: { quill: Quill; range: Range }) {
   const lines = quill.getLines(range);
   let formats = {};
   if (lines.length > 1) {
-    const firstFormats = lines[0].formats();
-    const lastFormats = lines[lines.length - 1].formats();
-    formats = AttributeMap.diff(lastFormats, firstFormats) || {};
+    formats = mergeDeltaAttributes(
+      lines[lines.length - 1] as BlockBlot,
+      lines[0] as BlockBlot,
+    );
   }
   quill.deleteText(range, Quill.sources.USER);
   if (Object.keys(formats).length > 0) {
@@ -844,6 +980,32 @@ function tableSide(_table: unknown, row: Blot, cell: Blot, offset: number) {
     return 1;
   }
   return null;
+}
+
+function mergeDeltaAttributes(
+  removed: BlockBlot,
+  survivor: BlockBlot,
+): AttributeMap {
+  const attributes =
+    AttributeMap.diff(removed.formats(), survivor.formats()) || {};
+
+  if (survivor.scroll.containerFormats) {
+    const rIndex = removed.offset(removed.scroll);
+    const rComesFirst = rIndex < survivor.offset(survivor.scroll);
+    let boundary: BlockBlot | undefined;
+    if (rComesFirst) {
+      boundary = removed;
+      if (rIndex > 0) {
+        boundary =
+          ((survivor.scroll as Scroll).line(rIndex - 1)[0] as BlockBlot) ||
+          removed;
+      }
+    }
+    const survivorContainers = survivor.serializeContainers(boundary);
+    attributes.container = survivorContainers;
+  }
+
+  return attributes;
 }
 
 export { Keyboard as default, SHORTKEY, normalize, deleteRange };
