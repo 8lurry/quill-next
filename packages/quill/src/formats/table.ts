@@ -142,6 +142,7 @@ class TableRow extends GenericContainer {
       const nextHead = this.next.children.head?.formats() || {};
       // @ts-expect-error
       const nextTail = this.next.children.tail?.formats() || {};
+
       const thisHeadId = thisHead.tableId || thisHead.table;
       const thisTailId = thisTail.tableId || thisTail.table;
       const nextHeadId = nextHead.tableId || nextHead.table;
@@ -161,7 +162,9 @@ class TableRow extends GenericContainer {
       if (child.next == null) return;
       const childFormats = child.formats();
       const nextFormats = child.next.formats();
-      if (childFormats.table !== nextFormats.table) {
+      const childId = childFormats.table || childFormats.tableId;
+      const nextId = nextFormats.table || nextFormats.tableId;
+      if (childId !== nextId) {
         const next = this.splitAfter(child);
         if (next) {
           // @ts-expect-error TODO: parameters of optimize() should be a optional

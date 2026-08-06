@@ -74,7 +74,7 @@ class Table extends Module {
     range = this.quill.getSelection(),
   ):
     | [null, null, null, -1]
-    | [Table, TableRow, TableCell | TableContainerCell, number] {
+    | [TableContainer, TableRow, TableCell | TableContainerCell, number] {
     if (range == null) return [null, null, null, -1];
     const [cell, offset] = this.quill.getLine(range.index);
     const resolvedCell = this.findTableCell(cell);

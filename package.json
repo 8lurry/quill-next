@@ -16,7 +16,7 @@
   },
   "pnpm": {
     "overrides": {
-      "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.0/parchment-2026.8.0.tgz",
+      "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.1/parchment-2026.8.1.tgz",
       "playwright": "1.49.0"
     },
     "onlyBuiltDependencies": [
@@ -67,10 +67,10 @@
     "next": "^14.2.35"
   },
   "overrides": {
-    "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.0/parchment-2026.8.0.tgz"
+    "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.1/parchment-2026.8.1.tgz"
   },
   "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa",
   "resolutions": {
-    "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.0/parchment-2026.8.0.tgz"
+    "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.1/parchment-2026.8.1.tgz"
   }
 }
