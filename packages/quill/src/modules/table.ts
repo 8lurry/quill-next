@@ -35,7 +35,6 @@ class Table extends Module {
   deleteColumn() {
     const [table, , cell] = this.getTable();
     if (cell == null) return;
-    // @ts-expect-error
     table.deleteColumn(cell.cellOffset());
     this.quill.update(Quill.sources.USER);
   }
@@ -50,9 +49,7 @@ class Table extends Module {
   deleteTable() {
     const [table] = this.getTable();
     if (table == null) return;
-    // @ts-expect-error
     const offset = table.offset();
-    // @ts-expect-error
     table.remove();
     this.quill.update(Quill.sources.USER);
     this.quill.setSelection(offset, Quill.sources.SILENT);
