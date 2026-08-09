@@ -58,7 +58,7 @@ test.describe('editing with generic containers', () => {
       );
     });
 
-    test('backspace on the start of a second line', async ({
+    test('backspace on the start of a second line1', async ({
       page,
       editorPage,
     }) => {
@@ -131,10 +131,12 @@ test.describe('editing with generic containers', () => {
         // @ts-expect-error
         window.quill.setSelection(4, 0);
       });
+
       await page.keyboard.press('Backspace');
       expect(await editorPage.root.innerHTML()).toEqual(
         `<div style="padding: 2px;"><p>One</p></div><p>Two</p><div style="padding: 3px;"><p>Three</p></div>`,
       );
+
       await page.keyboard.press('Backspace');
       expect(await editorPage.root.innerHTML()).toEqual(
         `<div style="padding: 2px;"><p>OneTwo</p></div><div style="padding: 3px;"><p>Three</p></div>`,

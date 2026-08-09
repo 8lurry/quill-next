@@ -109,7 +109,7 @@ class Scroll extends ScrollBlot {
           const firstIndex = first?.offset(this);
           prev = this.line(firstIndex - 1)[0] as BlockBlot | undefined;
         }
-        lastContainers = last.serializeContainers(prev);
+        lastContainers = last.serializeContainers({boundary: prev});
       }
     }
     super.deleteAt(index, length);

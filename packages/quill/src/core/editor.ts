@@ -1,6 +1,6 @@
 import { cloneDeep, isEqual, merge } from 'lodash-es';
 import { LeafBlot, EmbedBlot, Scope, ParentBlot, BlockBlot } from 'parchment';
-import type { Blot } from 'parchment';
+import type { Blot, ContainerInsertionInfo, ContainerRemovalInfo, SerializedContainer } from 'parchment';
 import Delta, { AttributeMap, Op } from '@quill-next/delta-es';
 import Block, {
   BlockEmbed,
@@ -19,6 +19,11 @@ const ASCII = /^[ -~]*$/;
 type SelectionInfo = {
   newRange: Range;
   oldRange: Range;
+};
+
+type GetDeltaOptions = {
+  containerInsertion?: ContainerInsertionInfo;
+  containerRemoval?: ContainerRemovalInfo;
 };
 
 class Editor {
@@ -184,12 +189,35 @@ class Editor {
     return this.delta.slice(index, index + length);
   }
 
-  getDelta(): Delta {
-    return this.scroll.lines().reduce((delta, line) => {
+  getDelta(index: number, length: number, options: GetDeltaOptions): Delta;
+  getDelta(): Delta;
+  getDelta(
+    index?: number,
+    length?: number,
+    options: GetDeltaOptions = {},
+  ): Delta {
+    let linesArgs = [index, length];
+    if (index == null) {
+      linesArgs = [];
+    }
+    return this.scroll.lines(...linesArgs).reduce((delta, line, idx) => {
       let lineDelta = line.delta();
 
       if (this.scroll.containerFormats && line instanceof BlockBlot) {
-        lineDelta = serializeContainers(line, lineDelta);
+        let insertion: ContainerInsertionInfo | undefined = undefined;
+        let removal: ContainerRemovalInfo | undefined = undefined;
+        if (options.containerInsertion) {
+          insertion = { ...options.containerInsertion };
+          insertion.firstLine = idx === 0;
+        }
+        if (options.containerRemoval) {
+          removal = { ...options.containerRemoval };
+          removal.firstLine = idx === 0;
+        }
+        lineDelta = serializeContainers(line, lineDelta, {
+          insertion,
+          removal,
+        });
       }
 
       return delta.concat(lineDelta);
@@ -345,6 +373,114 @@ class Editor {
       }
     }
     return change;
+  }
+
+  private commonParentFound(lastEnd: number, parent: ParentBlot): boolean {
+    parent.offset(this.scroll);
+    const parentEnd = parent.offset(this.scroll) + parent.length();
+    return lastEnd <= parentEnd;
+  }
+
+  private getContainerMutationDelta(
+    range: Range,
+    level: number,
+    container?: SerializedContainer,
+  ): Delta {
+    const originalLevel = level;
+    const [first] = this.scroll.line(range.index);
+    if (!first || !(first instanceof BlockBlot)) {
+      return new Delta();
+    }
+    const [last] = this.scroll.line(range.index + range.length);
+    if (!last || !(last instanceof BlockBlot)) {
+      return new Delta();
+    }
+    const lastIndex = last.offset(this.scroll);
+    const lastEnd = lastIndex + last.length();
+    const firstOffset = first.offset(this.scroll);
+    let parent = first.parent as ParentBlot;
+    let child = first as ParentBlot;
+    while (
+      !this.commonParentFound(lastEnd, parent) &&
+      parent.statics.blotName !== 'scroll'
+    ) {
+      child = parent;
+      parent = parent.parent as ParentBlot;
+    }
+    while (level > 0 && parent.statics.blotName !== 'scroll') {
+      child = parent;
+      parent = parent.parent as ParentBlot;
+      level--;
+    }
+    if (level != 0) {
+      throw new Error(
+        `Cannot find common parent at level ${originalLevel} for range ${range.index}-${range.index + range.length}`,
+      );
+    }
+    if (container == null) {
+      if (
+        child.statics.requiredContainer &&
+        child.statics.requiredContainer.prototype instanceof parent.constructor
+      ) {
+        throw new Error(
+          `Cannot remove container ${child.statics.blotName} from parent ${parent.statics.blotName}`,
+        );
+      }
+    } else {
+      if (
+        child.statics.requiredContainer &&
+        child.statics.requiredContainer?.blotName !== container.blot
+      ) {
+        throw new Error(
+          `Cannot insert container ${container.blot} above child ${child.statics.blotName}`,
+        );
+      }
+    }
+    const mutationOptions: GetDeltaOptions = {};
+    if (container != null) {
+      mutationOptions.containerInsertion = {
+        blot: parent,
+        container,
+        firstLine: true,
+      };
+    } else {
+      mutationOptions.containerRemoval = { blot: parent, firstLine: true };
+    }
+    const reinsertDelta = this.getDelta(
+      firstOffset,
+      lastEnd - firstOffset,
+      mutationOptions,
+    );
+    return new Delta()
+      .retain(firstOffset)
+      .delete(lastEnd - firstOffset)
+      .concat(reinsertDelta);
+  }
+
+  public getContainerRemovalDelta(range: Range, level: number): Delta {
+    let rv: Delta;
+    try {
+      rv = this.getContainerMutationDelta(range, level);
+    } catch (error) {
+      console.error(error);
+      rv = new Delta();
+    }
+    return rv;
+  }
+
+  public getContainerInsertDelta(
+    range: Range,
+    level: number,
+    container: SerializedContainer,
+  ): Delta {
+    let rv: Delta;
+    try {
+      rv = this.getContainerMutationDelta(range, level, container);
+    } catch (error) {
+      console.error(error);
+      rv = new Delta();
+    }
+    return rv;
   }
 }
 

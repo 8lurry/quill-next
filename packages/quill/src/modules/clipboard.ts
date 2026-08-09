@@ -704,30 +704,40 @@ function matchStyles(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
   return delta;
 }
 
-function matchTable(
-  node: HTMLTableRowElement,
-  delta: Delta,
-  scroll: ScrollBlot,
-) {
+function getRowIndex(node: HTMLTableRowElement) {
   const table =
     node.parentElement?.tagName === 'TABLE'
       ? node.parentElement
       : node.parentElement?.parentElement;
   if (table != null) {
     const rows = Array.from(table.querySelectorAll('tr'));
-    const row = rows.indexOf(node) + 1;
-    return applyFormat(delta, 'table', row, scroll).reduce((newDelta, op) => {
-      if (!op.insert) return newDelta;
-      if (
-        !op.attributes ||
-        !op.attributes.table ||
-        op.attributes.table !== CELL_OVERRIDE_PLACEHOLDER
-      ) {
-        return newDelta.push(op);
-      }
-      delete op.attributes.table;
-      return newDelta.insert(op.insert, { ...op.attributes });
-    }, new Delta());
+    return rows.indexOf(node) + 1;
+  }
+  return -1;
+}
+
+function matchTable(
+  node: HTMLTableRowElement,
+  delta: Delta,
+  scroll: ScrollBlot,
+) {
+  const rowIndex = getRowIndex(node);
+  if (rowIndex > 0) {
+    return applyFormat(delta, 'table', rowIndex, scroll).reduce(
+      (newDelta, op) => {
+        if (!op.insert) return newDelta;
+        if (
+          !op.attributes ||
+          !op.attributes.table ||
+          op.attributes.table !== CELL_OVERRIDE_PLACEHOLDER
+        ) {
+          return newDelta.push(op);
+        }
+        delete op.attributes.table;
+        return newDelta.insert(op.insert, { ...op.attributes });
+      },
+      new Delta(),
+    );
   }
   return delta;
 }
@@ -802,6 +812,14 @@ function serializeContainerDOM(
   let mergerFound = false;
 
   while (current && current !== scroll.domNode) {
+    let rowIndex = -1;
+    if (current.tagName === 'TD') {
+      current.classList.add('ql-cell-as-container');
+      if (!current.dataset.row) {
+        rowIndex = getRowIndex(current.parentElement as HTMLTableRowElement);
+      }
+    }
+
     const blot = scroll.query(current);
 
     // @ts-expect-error
@@ -822,7 +840,10 @@ function serializeContainerDOM(
       if (!mergerFound) {
         container.action = containerRestoreAction.REUSE;
         // @ts-expect-error
-        const formats = blot.formats(current, scroll);
+        const formats = blot.formats(current, scroll) || {};
+        if (rowIndex > 0) {
+          formats.tableId = rowIndex;
+        }
         if (formats && Object.keys(formats).length) {
           container.formats = formats;
         }

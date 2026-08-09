@@ -797,7 +797,36 @@ class Quill {
       return [];
     }
 
-    return line.serializeContainers(forceMerge ? line : undefined);
+    return line.serializeContainers(
+      forceMerge ? { boundary: line } : undefined,
+    );
+  }
+
+  public deleteContainerAt(level: number = 0) {
+    const selection = this.getSelection();
+    if (selection == null) {
+      return;
+    }
+    const delta = this.editor.getContainerRemovalDelta(selection, level);
+    this.updateContents(delta, Quill.sources.USER);
+    this.setSelection(selection, Quill.sources.SILENT);
+  }
+
+  public insertContainerAt(
+    container: Parchment.SerializedContainer,
+    level = 0,
+  ): void {
+    const selection = this.getSelection();
+    if (selection == null) {
+      return;
+    }
+    const delta = this.editor.getContainerInsertDelta(
+      selection,
+      level,
+      container,
+    );
+    this.updateContents(delta, Quill.sources.USER);
+    this.setSelection(selection, Quill.sources.SILENT);
   }
 }
 

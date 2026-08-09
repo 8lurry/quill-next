@@ -6,7 +6,7 @@ import {
   Scope,
   ContainerBlot,
 } from 'parchment';
-import type { Blot, Parent } from 'parchment';
+import type { Blot, Parent, SerializeContainerOptions } from 'parchment';
 import Delta, { type Op } from '@quill-next/delta-es';
 import Break from './break.js';
 import Inline from './inline.js';
@@ -241,10 +241,10 @@ function blockDelta(blot: BlockBlot, filter = true) {
 export function serializeContainers(
   line: Block,
   delta: Delta,
-  boundary?: Blot,
+  options?: SerializeContainerOptions,
 ): Delta {
-  const containers = line.serializeContainers(boundary);
-  if (!containers.length) {
+  const containers = line.serializeContainers(options);
+  if (containers.length === 0 && line.parent === line.scroll) {
     return delta;
   }
 

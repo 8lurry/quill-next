@@ -1001,7 +1001,7 @@ function mergeDeltaAttributes(
           removed;
       }
     }
-    const survivorContainers = survivor.serializeContainers(boundary);
+    const survivorContainers = survivor.serializeContainers({ boundary });
     attributes.container = survivorContainers;
   }
 
