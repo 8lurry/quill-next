@@ -72,16 +72,13 @@ export default class EditorPage {
 
   async html(content: string, title = '') {
     await this.page.evaluate((html) => {
-      // @ts-expect-error
       const contents = window.quill.clipboard.convert({ html, text: '\n' });
-      // @ts-expect-error
       return window.quill.setContents(contents);
     }, `<p>${title}</p>${content}`);
   }
 
   getSelection() {
     return this.page.evaluate(() => {
-      // @ts-expect-error
       return window.quill.getSelection();
     });
   }
@@ -93,7 +90,6 @@ export default class EditorPage {
     length?: number,
   ) {
     await this.page.evaluate(
-      // @ts-expect-error
       (range) => window.quill.setSelection(range),
       typeof range === 'number' ? { index: range, length: length || 0 } : range,
     );
@@ -108,7 +104,6 @@ export default class EditorPage {
 
   async cutoffHistory() {
     await this.page.evaluate(() => {
-      // @ts-expect-error
       window.quill.history.cutoff();
     });
   }
@@ -116,7 +111,6 @@ export default class EditorPage {
   async updateContents(delta: Op[], source: 'api' | 'user' = 'api') {
     await this.page.evaluate(
       ({ delta, source }) => {
-        // @ts-expect-error
         window.quill.updateContents(delta, source);
       },
       { delta, source },
@@ -125,14 +119,12 @@ export default class EditorPage {
 
   async setContents(delta: Op[]) {
     await this.page.evaluate((delta) => {
-      // @ts-expect-error
       window.quill.setContents(delta);
     }, delta);
   }
 
   getContents(): Promise<Op[]> {
     return this.page.evaluate(() => {
-      // @ts-expect-error
       return window.quill.getContents().ops;
     });
   }
