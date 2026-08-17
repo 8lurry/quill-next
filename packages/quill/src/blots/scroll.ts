@@ -5,15 +5,10 @@ import {
   ScrollBlot,
   GenericContainer,
   BlockBlot,
+  EmbedBlot,
   ParentBlot,
 } from 'parchment';
-import type {
-  Blot,
-  Parent,
-  EmbedBlot,
-  Registry,
-  SerializedContainer,
-} from 'parchment';
+import type { Blot, Parent, Registry, SerializedContainer } from 'parchment';
 import Delta, { AttributeMap, Op } from '@quill-next/delta-es';
 import Emitter from '../core/emitter.js';
 import type { EmitterSource } from '../core/emitter.js';
@@ -58,6 +53,7 @@ class Scroll extends ScrollBlot {
 
   emitter: Emitter;
   batch: false | MutationRecord[];
+  hierarchical: boolean = false;
 
   constructor(
     registry: Registry,
@@ -102,19 +98,25 @@ class Scroll extends ScrollBlot {
     const [last] = this.line(index + length);
     let lastContainers: SerializedContainer[] | undefined;
 
-    if (last != null && first !== last && offset > 0 && this.containerFormats) {
-      if (last instanceof BlockBlot) {
-        let prev: BlockBlot | undefined;
+    if (last != null && first !== last && offset > 0 && this.hierarchical) {
+      if (last.statics.isBlock) {
+        let prev: BlockBlot | BlockEmbed | undefined;
         if (first) {
-          const firstIndex = first?.offset(this);
-          prev = this.line(firstIndex - 1)[0] as BlockBlot | undefined;
+          const firstIndex = first.offset(this);
+          if (firstIndex > 0) {
+            prev = this.line(firstIndex - 1)[0] as
+              BlockBlot | BlockEmbed | undefined;
+          }
         }
-        lastContainers = last.serializeContainers({boundary: prev});
+        lastContainers = last.serializeContainers({ boundary: prev });
       }
     }
     super.deleteAt(index, length);
     if (last != null && first !== last && offset > 0) {
       if (first instanceof BlockEmbed || last instanceof BlockEmbed) {
+        if (this.hierarchical && lastContainers) {
+          last.restoreContainers(lastContainers);
+        }
         this.optimize();
         return;
       }
@@ -124,8 +126,8 @@ class Scroll extends ScrollBlot {
       first.moveChildren(last, ref);
       // @ts-expect-error
       first.remove();
-      if (this.containerFormats && lastContainers) {
-        last.restoreContainers(lastContainers || []);
+      if (this.hierarchical && lastContainers) {
+        last.restoreContainers(lastContainers);
       }
     }
     this.optimize();
@@ -234,6 +236,11 @@ class Scroll extends ScrollBlot {
           Object.keys(renderBlock.attributes).forEach((name) => {
             blockEmbed.format(name, renderBlock.attributes[name]);
           });
+
+          if (this.hierarchical && renderBlock.containers) {
+            blockEmbed.restoreContainers(renderBlock.containers);
+          }
+
         }
       });
     }
@@ -367,7 +374,7 @@ class Scroll extends ScrollBlot {
       const insert = op?.insert;
       if (!insert) return;
       const attrs = extractContainerAttributes(op.attributes);
-      const containers = this.containerFormats ? attrs?.containers : undefined;
+      const containers = this.hierarchical ? attrs?.containers : undefined;
       const formats = attrs?.formats;
       if (typeof insert === 'string') {
         const splitted = insert.split('\n');
@@ -378,7 +385,7 @@ class Scroll extends ScrollBlot {
             delta: currentBlockDelta,
             attributes: formats,
           };
-          if (this.containerFormats) {
+          if (this.hierarchical) {
             rBlock.containers = containers;
           }
           renderBlocks.push(rBlock);
@@ -403,7 +410,7 @@ class Scroll extends ScrollBlot {
               delta: currentBlockDelta,
               attributes: {},
             };
-            if (this.containerFormats) {
+            if (this.hierarchical) {
               rBlock.containers = [];
             }
             renderBlocks.push(rBlock);
@@ -415,7 +422,7 @@ class Scroll extends ScrollBlot {
             value: insert[key],
             attributes: formats,
           };
-          if (this.containerFormats) {
+          if (this.hierarchical) {
             rBlock.containers = containers;
           }
           renderBlocks.push(rBlock);
@@ -429,7 +436,7 @@ class Scroll extends ScrollBlot {
         delta: currentBlockDelta,
         attributes: {},
       };
-      if (this.containerFormats) {
+      if (this.hierarchical) {
         rBlock.containers = [];
       }
       renderBlocks.push(rBlock);
@@ -458,7 +465,7 @@ class Scroll extends ScrollBlot {
     const block = this.create(
       blotName || this.statics.defaultChild.blotName,
       blotName ? attributes[blotName] : undefined,
-    ) as ParentBlot;
+    ) as BlockBlot;
 
     this.insertBefore(block, refBlot || undefined);
 
@@ -467,12 +474,7 @@ class Scroll extends ScrollBlot {
       block.formatAt(0, length, key, value);
     });
 
-    if (
-      this.containerFormats &&
-      containers &&
-      containers.length > 0 &&
-      block instanceof BlockBlot
-    ) {
+    if (this.hierarchical && containers && block.statics.isBlock) {
       block.restoreContainers(containers);
     }
 
@@ -483,11 +485,11 @@ class Scroll extends ScrollBlot {
     index: number,
     containers?: SerializedContainer[],
   ) {
-    if (!this.containerFormats || !containers) return;
+    if (!this.hierarchical || !containers) return;
 
     const [line] = this.line(index);
 
-    if (line instanceof BlockBlot) {
+    if (line?.statics.isBlock) {
       line.restoreContainers(containers);
     }
   }

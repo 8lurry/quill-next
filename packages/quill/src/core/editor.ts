@@ -1,6 +1,12 @@
 import { cloneDeep, isEqual, merge } from 'lodash-es';
 import { LeafBlot, EmbedBlot, Scope, ParentBlot, BlockBlot } from 'parchment';
-import type { Blot, ContainerInsertionInfo, ContainerRemovalInfo, SerializedContainer } from 'parchment';
+import type {
+  Blot,
+  ContainerBlot,
+  ContainerInsertionInfo,
+  ContainerRemovalInfo,
+  SerializedContainer,
+} from 'parchment';
 import Delta, { AttributeMap, Op } from '@quill-next/delta-es';
 import Block, {
   BlockEmbed,
@@ -123,12 +129,12 @@ class Editor {
         op.attributes != null &&
         Object.prototype.hasOwnProperty.call(op.attributes, 'container');
 
-      if (this.scroll.containerFormats && hasContainerAttribute) {
+      if (this.scroll.hierarchical && hasContainerAttribute) {
         const end = index + length - 1;
 
         const [line] = this.scroll.line(end);
 
-        if (line instanceof ParentBlot) {
+        if (line?.statics.isBlock) {
           line.restoreContainers(containers);
         }
       }
@@ -203,7 +209,7 @@ class Editor {
     return this.scroll.lines(...linesArgs).reduce((delta, line, idx) => {
       let lineDelta = line.delta();
 
-      if (this.scroll.containerFormats && line instanceof BlockBlot) {
+      if (this.scroll.hierarchical && line.statics.isBlock) {
         let insertion: ContainerInsertionInfo | undefined = undefined;
         let removal: ContainerRemovalInfo | undefined = undefined;
         if (options.containerInsertion) {
@@ -388,28 +394,28 @@ class Editor {
   ): Delta {
     const originalLevel = level;
     const [first] = this.scroll.line(range.index);
-    if (!first || !(first instanceof BlockBlot)) {
+    if (!first || !first.statics.isBlock) {
       return new Delta();
     }
     const [last] = this.scroll.line(range.index + range.length);
-    if (!last || !(last instanceof BlockBlot)) {
+    if (!last || !last.statics.isBlock) {
       return new Delta();
     }
     const lastIndex = last.offset(this.scroll);
     const lastEnd = lastIndex + last.length();
     const firstOffset = first.offset(this.scroll);
-    let parent = first.parent as ParentBlot;
-    let child = first as ParentBlot;
+    let parent = first.parent as ContainerBlot | Scroll;
+    let child: BlockBlot | ContainerBlot | BlockEmbed = first;
     while (
       !this.commonParentFound(lastEnd, parent) &&
       parent.statics.blotName !== 'scroll'
     ) {
-      child = parent;
-      parent = parent.parent as ParentBlot;
+      child = parent as ContainerBlot;
+      parent = parent.parent as ContainerBlot | Scroll;
     }
     while (level > 0 && parent.statics.blotName !== 'scroll') {
-      child = parent;
-      parent = parent.parent as ParentBlot;
+      child = parent as ContainerBlot;
+      parent = parent.parent as ContainerBlot | Scroll;
       level--;
     }
     if (level != 0) {
@@ -439,12 +445,15 @@ class Editor {
     const mutationOptions: GetDeltaOptions = {};
     if (container != null) {
       mutationOptions.containerInsertion = {
-        blot: parent,
+        blot: parent as ContainerBlot,
         container,
         firstLine: true,
       };
     } else {
-      mutationOptions.containerRemoval = { blot: parent, firstLine: true };
+      mutationOptions.containerRemoval = {
+        blot: parent as ContainerBlot,
+        firstLine: true,
+      };
     }
     const reinsertDelta = this.getDelta(
       firstOffset,

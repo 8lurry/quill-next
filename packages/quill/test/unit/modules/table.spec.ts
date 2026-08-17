@@ -13,7 +13,10 @@ import { normalizeHTML } from '../__helpers__/utils.js';
 import Table from '../../../src/modules/table.js';
 import { Classes } from '../../../src/formats/classes.js';
 
-const createQuill = (html: string) => {
+const createQuill = (
+  html: string,
+  enableStylesAndHeirarchy: boolean = false,
+) => {
   Quill.register({ 'modules/table': Table }, true);
   const container = document.body.appendChild(document.createElement('div'));
   container.innerHTML = normalizeHTML(html);
@@ -26,6 +29,12 @@ const createQuill = (html: string) => {
       TableContainer,
       TableRow,
     ]),
+    features: enableStylesAndHeirarchy
+      ? {
+          styles: true,
+          hierarchy: true,
+        }
+      : undefined,
   });
   return quill;
 };
@@ -242,7 +251,10 @@ describe('Table Module', () => {
           TableRow,
           Classes,
         ]),
-        containerFormats: true,
+        features: {
+          hierarchy: true,
+          styles: true,
+        },
       });
       return quill;
     };
@@ -521,8 +533,7 @@ describe('Table Module', () => {
 
   describe('table with a cell as a container', () => {
     test('insert table', () => {
-      const quill = createQuill('<p><br></p>');
-      quill.scroll.containerFormats = true;
+      const quill = createQuill('<p><br></p>', true);
       const table = quill.getModule('table') as Table;
       quill.setSelection(0);
       table.insertTable(2, 3);
@@ -552,8 +563,7 @@ describe('Table Module', () => {
     });
 
     test('insert delete rows and columns', () => {
-      const quill = createQuill('<p><br></p>');
-      quill.scroll.containerFormats = true;
+      const quill = createQuill('<p><br></p>', true);
       const table = quill.getModule('table') as Table;
       quill.setSelection(0);
       table.insertTable(2, 3);

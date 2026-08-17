@@ -9,7 +9,7 @@ import type {
 
 import Block, { BlockEmbed } from './blots/block.js';
 import Break from './blots/break.js';
-import Container, { GenericContainer } from './blots/container.js';
+import Container from './blots/container.js';
 import Cursor from './blots/cursor.js';
 import Embed from './blots/embed.js';
 import Inline from './blots/inline.js';
@@ -47,7 +47,6 @@ Quill.register({
   'blots/inline': Inline,
   'blots/scroll': Scroll,
   'blots/text': TextBlot,
-  'blots/generic-container': GenericContainer,
 
   'modules/clipboard': Clipboard,
   'modules/history': History,

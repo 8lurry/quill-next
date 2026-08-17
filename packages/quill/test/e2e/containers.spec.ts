@@ -4,22 +4,21 @@ import { normalizeHTML } from '../unit/__helpers__/utils.js';
 
 test.describe('editing with generic containers', () => {
   test.beforeEach(async ({ page, editorPage }) => {
+    page.on('console', (msg) => console.log(msg.text()));
+
     await editorPage.open();
     await page.waitForFunction(() => {
-      // @ts-expect-error
       return window.quill != null;
+    });
+    await page.evaluate(() => {
+      const { quill } = window;
+      window.HierarchicalGlobals.registerHierarchyAndStyles();
+      quill.scroll.hierarchical = true;
     });
   });
 
   test.describe('backspace', () => {
     test('backspace without container', async ({ page, editorPage }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -49,7 +48,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(4, 0);
       });
       await page.keyboard.press('Backspace');
@@ -62,13 +60,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -128,7 +119,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(4, 0);
       });
 
@@ -147,13 +137,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -217,7 +200,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(8, 0);
       });
       await page.keyboard.press('Backspace');
@@ -234,13 +216,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -300,7 +275,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(8, 0);
       });
       await page.keyboard.press('Backspace');
@@ -309,14 +283,10 @@ test.describe('editing with generic containers', () => {
       );
     });
 
-    test('backspace on an empty line with a container', async ({ page, editorPage }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
+    test('backspace on an empty line with a container', async ({
+      page,
+      editorPage,
+    }) => {
       await editorPage.setContents([
         {
           insert: 'One',
@@ -356,7 +326,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(4, 0);
       });
       await page.keyboard.press('Backspace');
@@ -370,14 +339,10 @@ test.describe('editing with generic containers', () => {
       );
     });
 
-    test('backspace on second sibling inside container', async ({ page, editorPage }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
+    test('backspace on second sibling inside container', async ({
+      page,
+      editorPage,
+    }) => {
       await editorPage.setContents([
         {
           insert: 'One',
@@ -420,7 +385,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(4, 0);
       });
       await page.keyboard.press('Backspace');
@@ -435,13 +399,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -471,7 +428,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(3, 0);
       });
       await page.keyboard.press('Delete');
@@ -484,13 +440,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -533,7 +482,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(3, 0);
       });
       await page.keyboard.press('Delete');
@@ -548,13 +496,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -584,7 +525,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(3, 0);
       });
       await page.keyboard.press('Enter');
@@ -596,7 +536,6 @@ test.describe('editing with generic containers', () => {
       expect(selection).toEqual({ index: 4, length: 0 });
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(8, 0);
       });
 
@@ -613,13 +552,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -650,7 +582,7 @@ test.describe('editing with generic containers', () => {
                 action: 'MERGE_TO_PREV',
                 blot: 'generic-container',
                 formats: {
-                  styles: { padding: '2px'},
+                  styles: { padding: '2px' },
                 },
               },
             ],
@@ -663,7 +595,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(3, 0);
       });
       await page.keyboard.press('Enter');
@@ -684,13 +615,6 @@ test.describe('editing with generic containers', () => {
       page,
       editorPage,
     }) => {
-      page.on('console', (msg) => console.log(msg.text()));
-
-      await page.evaluate(() => {
-        // @ts-expect-error
-        window.quill.scroll.containerFormats = true;
-      });
-
       await editorPage.setContents([
         {
           insert: 'One',
@@ -747,7 +671,6 @@ test.describe('editing with generic containers', () => {
       );
 
       await page.evaluate(() => {
-        // @ts-expect-error
         window.quill.setSelection(7, 0);
       });
       await page.keyboard.press('Enter');
@@ -792,15 +715,7 @@ test.describe('editing with generic containers', () => {
         page,
         editorPage,
       }) => {
-        page.on('console', (msg) => console.log(msg.text()));
-
-        await page.evaluate(() => {
-          // @ts-expect-error
-          window.quill.scroll.containerFormats = true;
-        });
-
         await page.evaluate((TEST_HTML) => {
-          // @ts-expect-error
           const { quill } = window;
           quill.clipboard.dangerouslyPasteHTML(TEST_HTML);
 
@@ -852,7 +767,6 @@ test.describe('editing with generic containers', () => {
         );
 
         await page.evaluate(() => {
-          // @ts-expect-error
           const { quill } = window;
           quill.setSelection(7, 0);
         });
@@ -887,15 +801,7 @@ test.describe('editing with generic containers', () => {
         page,
         editorPage,
       }) => {
-        page.on('console', (msg) => console.log(msg.text()));
-
-        await page.evaluate(() => {
-          // @ts-expect-error
-          window.quill.scroll.containerFormats = true;
-        });
-
         await page.evaluate((TEST_HTML) => {
-          // @ts-expect-error
           const { quill } = window;
           quill.clipboard.dangerouslyPasteHTML(TEST_HTML);
 
@@ -923,7 +829,6 @@ test.describe('editing with generic containers', () => {
         );
 
         await page.evaluate(() => {
-          // @ts-expect-error
           const { quill } = window;
           quill.setSelection(12, 0);
         });
@@ -952,7 +857,6 @@ test.describe('editing with generic containers', () => {
         );
 
         await page.evaluate(() => {
-          // @ts-expect-error
           const { quill } = window;
           quill.setSelection(6, 0);
         });

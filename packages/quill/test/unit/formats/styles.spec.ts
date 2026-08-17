@@ -7,7 +7,10 @@ import { AlignStyle } from '../../../src/formats/align.js';
 const OPTIONS = {
   modules: { table: true },
   registry: createRegistry([Styles, AlignStyle]),
-  containerFormats: true,
+  features: {
+    hierarchy: true,
+    styles: true,
+  },
 };
 
 describe('Styles', () => {
@@ -92,7 +95,7 @@ describe('Styles', () => {
         .insert('\n', { align: 'center', styles: { maxWidth: '100px' } }),
     );
     expect(quill.root).toEqualHTML(
-      '<p style="max-width: 100px; text-align: center;">0123</p>',
+      '<p style="text-align: center; max-width: 100px;">0123</p>',
     );
     const contents = quill.clipboard.convert({
       html: `${html}<p><br></p>`,
@@ -101,7 +104,7 @@ describe('Styles', () => {
 
     quill.setContents(contents);
     expect(quill.root).toEqualHTML(
-      '<p style="max-width: 100px; text-align: center;">0123</p>',
+      '<p style="text-align: center; max-width: 100px;">0123</p>',
     );
   });
 });

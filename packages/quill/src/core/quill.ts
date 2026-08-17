@@ -27,6 +27,8 @@ import type {
   ScrollRectIntoViewOptions,
 } from './utils/scrollRectIntoView.js';
 import createRegistryWithFormats from './utils/createRegistryWithFormats.js';
+import type { QuillFeatures } from './utils/registerFeatures.js';
+import registerFeatures from './utils/registerFeatures.js';
 
 const debug = logger('quill');
 
@@ -62,9 +64,12 @@ export interface QuillOptions {
   formats?: string[] | null;
 
   /**
-   * Whether to leave formatting to containers when they own some.
+   * Setting this value to true gives us a private registry to the quill
+   * instance with everything copied from the globalRegistry
    */
-  containerFormats?: boolean;
+  inheritGlobalRegistry?: boolean;
+
+  features?: QuillFeatures;
 }
 
 /**
@@ -204,6 +209,7 @@ class Quill {
 
   constructor(container: HTMLElement | string, options: QuillOptions = {}) {
     this.options = expandConfig(container, options);
+    registerFeatures(this.options.features, this.options.registry);
     this.container = this.options.container;
     if (this.container == null) {
       debug.error('Invalid Quill container', container);
@@ -230,7 +236,7 @@ class Quill {
     this.scroll = new ScrollBlot(this.options.registry, this.root, {
       emitter: this.emitter,
     }) as Scroll;
-    this.scroll.containerFormats = !!this.options.containerFormats;
+    this.scroll.hierarchical = !!this.options.features?.hierarchy;
     this.editor = new Editor(this.scroll);
     this.selection = new Selection(this.scroll, this.emitter);
     this.composition = new Composition(this.scroll, this.emitter);
@@ -793,7 +799,9 @@ class Quill {
 
     const [line] = this.getLine(range.index);
 
-    if (!(line instanceof Parchment.BlockBlot)) {
+    if (!(
+      line instanceof Parchment.BlockBlot || line instanceof Parchment.EmbedBlot
+    )) {
       return [];
     }
 
@@ -904,10 +912,16 @@ function expandConfig(
     if (options.formats) {
       debug.warn('Ignoring "formats" option because "registry" is specified');
     }
+  } else if (options.formats) {
+    registry = createRegistryWithFormats(
+      options.formats,
+      config.registry,
+      debug,
+    );
+  } else if (options.inheritGlobalRegistry) {
+    registry = globalRegistry.clone();
   } else {
-    registry = options.formats
-      ? createRegistryWithFormats(options.formats, config.registry, debug)
-      : config.registry;
+    registry = config.registry;
   }
 
   return {

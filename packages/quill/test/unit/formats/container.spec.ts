@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import Quill from '../../../src/quill.js';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import Quill, { type QuillOptions } from '../../../src/quill.js';
 import Delta from '@quill-next/delta-es';
 import Editor from '../../../src/core/editor.js';
 import {
@@ -17,14 +17,31 @@ import {
   TableBody,
   TableContainer,
 } from '../../../src/formats/table.js';
+import Video from '../../../src/formats/video.js';
+import { merge, cloneDeep } from 'lodash-es';
 
-const OPTIONS = {
+const DEFAULT_OPTIONS: QuillOptions = {
   modules: { clipboard: true, table: true },
-  registry: createRegistry([GenericContainer, Styles]),
-  containerFormats: true,
+  registry: createRegistry([GenericContainer, Styles, Video]),
+  features: {
+    hierarchy: true,
+    styles: true,
+  },
 };
 
+let OPTION_OVERRIDES: QuillOptions = {};
+
+const resetOptions = () => {
+  OPTIONS = merge(cloneDeep(DEFAULT_OPTIONS), cloneDeep(OPTION_OVERRIDES));
+};
+
+let OPTIONS: QuillOptions;
+
 describe('constainer formats', () => {
+  beforeEach(() => {
+    resetOptions();
+  });
+
   it('serializes nested containers', () => {
     const quill = createQuill(
       `
@@ -284,7 +301,7 @@ describe('constainer formats', () => {
     const delta = quill.getContents();
 
     const scroll = createScroll('', createRegistry([GenericContainer, Styles]));
-    scroll.containerFormats = true;
+    scroll.hierarchical = true;
 
     const editor2 = new Editor(scroll);
     editor2.applyDelta(delta);
@@ -455,8 +472,8 @@ describe('constainer formats', () => {
 
   describe('table operations', () => {
     beforeAll(() => {
-      (OPTIONS.modules as any).table = true;
-      (OPTIONS as any).registry = createRegistry([
+      OPTION_OVERRIDES.modules = { table: true };
+      OPTION_OVERRIDES.registry = createRegistry([
         TableCell,
         TableContainerCell,
         TableRow,
@@ -468,8 +485,7 @@ describe('constainer formats', () => {
     });
 
     afterAll(() => {
-      delete (OPTIONS.modules as any).table;
-      delete (OPTIONS as any).registry;
+      OPTION_OVERRIDES = {};
     });
 
     it("loading table's container cells", () => {
@@ -547,11 +563,9 @@ describe('constainer formats', () => {
 
   describe('inserting without container formats', () => {
     beforeAll(() => {
-      (OPTIONS.modules as any).table = true;
-      (OPTIONS as any).containerFormats = false;
-      (OPTIONS as any).registry = createRegistry([
+      OPTION_OVERRIDES.modules = { table: true };
+      OPTION_OVERRIDES.registry = createRegistry([
         TableCell,
-        // TableContainerCell,
         TableRow,
         TableBody,
         TableContainer,
@@ -559,12 +573,11 @@ describe('constainer formats', () => {
     });
 
     afterAll(() => {
-      delete (OPTIONS.modules as any).table;
-      delete (OPTIONS as any).registry;
-      (OPTIONS as any).containerFormats = true;
+      OPTION_OVERRIDES = {};
     });
 
     it('inserting a table in non container editor', () => {
+      delete OPTIONS.features;
       const quill = createQuill(
         `
         <p>One</p>
@@ -773,6 +786,98 @@ describe('constainer formats', () => {
       );
 
       expect(quill.root.innerHTML).toEqualHTML(normalizeHTML(dom));
+    });
+  });
+
+  describe('containers around block embed', () => {
+    it('block embeds within generic containers', () => {
+      const html = `
+      <div style="padding: 2px;">
+        <div style="width: 50%;">
+          <iframe src="#" class="ql-video" frameborder="0" allowfullscreen="true"> </iframe>
+        </div>
+      </div>
+      `;
+
+      const quill = createQuill(html, OPTIONS);
+
+      expect(quill.getContents()).toEqual(
+        new Delta()
+          .insert(
+            {
+              video: '#',
+            },
+            {
+              classes: {
+                'ql-video': true,
+              },
+              container: [
+                {
+                  action: 'REUSE',
+                  allowSplit: true,
+                  blot: 'generic-container',
+                  formats: {
+                    styles: {
+                      width: '50%',
+                    },
+                  },
+                },
+                {
+                  action: 'REUSE',
+                  allowSplit: true,
+                  blot: 'generic-container',
+                  formats: {
+                    styles: {
+                      padding: '2px',
+                    },
+                  },
+                },
+              ],
+            },
+          )
+          .insert('\n'),
+      );
+
+      quill.insertText(0, '\n', Quill.sources.USER);
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        `
+        <div style="padding: 2px;">
+          <div style="width: 50%;">
+            <p><br></p>
+            <iframe src="#" class="ql-video" frameborder="0" allowfullscreen="true"></iframe>
+          </div>
+        </div>
+        <p><br></p>
+        `,
+      );
+
+      quill.deleteText({ index: 1, length: 1 }, Quill.sources.USER);
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        `
+        <div style="padding: 2px;">
+          <div style="width: 50%;">
+            <p><br></p>
+          </div>
+        </div>
+        <p><br></p>
+        `,
+      );
+
+      quill.insertEmbed(0, 'video', '#', Quill.sources.USER);
+
+      expect(quill.root.innerHTML).toEqualHTML(
+        `
+        <div style="padding: 2px;">
+          <div style="width: 50%;">
+            <iframe src="#" class="ql-video" frameborder="0" allowfullscreen="true"></iframe>
+            <p><br></p>
+          </div>
+        </div>
+        <p><br></p>
+        `,
+      );
     });
   });
 });

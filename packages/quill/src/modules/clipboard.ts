@@ -32,6 +32,7 @@ import { SizeStyle } from '../formats/size.js';
 import { deleteRange } from './keyboard.js';
 import normalizeExternalHTML from './normalizeExternalHTML/index.js';
 import { SOFT_BREAK_CHARACTER } from '../blots/soft-break.js';
+import type Scroll from '../blots/scroll.js';
 
 const debug = logger('quill:clipboard');
 
@@ -450,7 +451,7 @@ function createMatchAlias(format: string) {
 }
 
 function matchAttributor(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
-  if (scroll.containerFormats) {
+  if ((scroll as Scroll).hierarchical) {
     const match = scroll.query(node);
 
     if (
@@ -465,8 +466,12 @@ function matchAttributor(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
   const attributes = Attributor.keys(node);
   const classes = ClassAttributor.keys(node);
   const styles = StyleAttributor.keys(node);
-  const stylesMap = scroll.containerFormats ? StylesAttributor.keys(node) : [];
-  const klasses = scroll.containerFormats ? ClassesAttributor.keys(node) : [];
+  const stylesMap = scroll.registry.has(Styles)
+    ? StylesAttributor.keys(node)
+    : [];
+  const klasses = scroll.registry.has(Classes)
+    ? ClassesAttributor.keys(node)
+    : [];
   const formats: Record<string, string | undefined> = {};
   attributes
     .concat(classes)
@@ -483,11 +488,9 @@ function matchAttributor(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
       if (attr != null && (attr.attrName === name || attr.keyName === name)) {
         formats[attr.attrName] = attr.value(node) || undefined;
       }
-      if (scroll.containerFormats) {
-        attr = CLASS_ATTRIBUTORS[name];
-        if (attr != null && (attr.attrName === name || attr.keyName === name)) {
-          formats[attr.attrName] = attr.value(node) || undefined;
-        }
+      attr = CLASS_ATTRIBUTORS[name];
+      if (attr != null && (attr.attrName === name || attr.keyName === name)) {
+        formats[attr.attrName] = attr.value(node) || undefined;
       }
       attr = STYLE_ATTRIBUTORS[name];
       if (attr != null && (attr.attrName === name || attr.keyName === name)) {
@@ -502,7 +505,7 @@ function matchAttributor(node: HTMLElement, delta: Delta, scroll: ScrollBlot) {
   );
 }
 
-function matchBlot(node: Node, delta: Delta, scroll: ScrollBlot) {
+function matchBlot(node: Node, delta: Delta, scroll: Scroll) {
   const match = scroll.query(node);
   if (match == null) return delta;
   // @ts-expect-error
@@ -514,7 +517,7 @@ function matchBlot(node: Node, delta: Delta, scroll: ScrollBlot) {
       // @ts-expect-error
       embed[match.blotName] = value;
       // @ts-expect-error
-      return new Delta().insert(embed, match.formats(node, scroll));
+      delta = new Delta().insert(embed, match.formats(node, scroll));
     }
   } else {
     // @ts-expect-error
@@ -523,29 +526,28 @@ function matchBlot(node: Node, delta: Delta, scroll: ScrollBlot) {
         delta.insert('\n');
       }
 
-      if (scroll.containerFormats) {
-        const containers = serializeContainerDOM(node, scroll);
-        if (containers.length > 0) {
-          const [ops, newline] = normalizeLastOp(delta);
-          if (newline !== null) {
-            newline.attributes = {
-              ...(newline.attributes || {}),
-              container: containers,
-            };
-
-            delta = new Delta(ops);
-          }
-        }
+      if (scroll.hierarchical) {
+        delta = normalizeLastOp(delta);
       }
     }
     if (
       'blotName' in match &&
       'formats' in match &&
       typeof match.formats === 'function' &&
-      !(scroll.containerFormats && match.prototype instanceof ContainerBlot)
+      !(scroll.hierarchical && match.prototype instanceof ContainerBlot)
     ) {
       const formats = match.formats(node, scroll);
-      return applyFormat(delta, match.blotName, formats, scroll);
+      delta = applyFormat(delta, match.blotName, formats, scroll);
+    }
+  }
+  if (scroll.hierarchical && (match as BlotConstructor).isBlock) {
+    const containers = serializeContainerDOM(node, scroll);
+    if (containers.length) {
+      const lastOp = delta.ops[delta.ops.length - 1];
+      lastOp.attributes = {
+        ...(lastOp.attributes || {}),
+        container: containers,
+      };
     }
   }
   return delta;
@@ -887,7 +889,7 @@ function hasBlockBlotInSubtree(node: Node, scroll: ScrollBlot): boolean {
     const match = scroll.query(current);
 
     // @ts-expect-error
-    if (match && match.prototype instanceof BlockBlot) {
+    if (match && match.isBlock) {
       return true;
     }
 

@@ -11,7 +11,7 @@ import type { Blot, ParentBlot, SerializedContainer } from 'parchment';
 import Quill from '../core/quill.js';
 import logger from '../core/logger.js';
 import Module from '../core/module.js';
-import type { BlockEmbed } from '../blots/block.js';
+import { BlockEmbed } from '../blots/block.js';
 import type { Range } from '../core/selection.js';
 import { SOFT_BREAK_CHARACTER } from '../blots/soft-break.js';
 import type Scroll from '../blots/scroll.js';
@@ -246,7 +246,7 @@ class Keyboard extends Module<KeyboardOptions> {
         container: this.quill.getContainerFormats(range, evt.key === 'Enter'),
       };
       const { scroll } = this.quill;
-      const { containerFormats } = scroll;
+      const { hierarchical } = scroll;
 
       const prevented = matches.some((binding) => {
         if (
@@ -259,10 +259,10 @@ class Keyboard extends Module<KeyboardOptions> {
           ancestorOffset = curContext.offset,
           ancestorPrefix = curContext.prefix,
           ancestorSuffix = curContext.suffix,
-          containerMatch = !binding.container || !containerFormats,
+          containerMatch = !binding.container || !hierarchical,
           ancestor;
 
-        if (containerFormats && binding.container) {
+        if (hierarchical && binding.container) {
           const { blot } = binding.container;
           const [a, aOffset] = scroll.ancestorAt(
             range.index,
@@ -298,7 +298,7 @@ class Keyboard extends Module<KeyboardOptions> {
           return false;
         }
 
-        if (containerFormats && binding.container) {
+        if (hierarchical && binding.container) {
           const { offset, length, prefix, suffix } = binding.container;
           if (ancestor) {
             const ancestorLength = ancestor.length();
@@ -317,7 +317,7 @@ class Keyboard extends Module<KeyboardOptions> {
             }
           }
         }
-        if (containerFormats && binding.exclusiveContainer && containerMatch) {
+        if (hierarchical && binding.exclusiveContainer && containerMatch) {
           return (
             // @ts-expect-error Fix me later
             binding.handler.call(this, range, curContext, binding) !== true
@@ -371,8 +371,8 @@ class Keyboard extends Module<KeyboardOptions> {
     if (context.offset === 0) {
       if (
         line &&
-        line.scroll.containerFormats &&
-        line instanceof BlockBlot &&
+        (line.scroll as Scroll).hierarchical &&
+        line.statics.isBlock &&
         line.parent instanceof GenericContainer &&
         line.parent.allowSplit() &&
         (!line.prev ||
@@ -455,9 +455,9 @@ class Keyboard extends Module<KeyboardOptions> {
     let containers: SerializedContainer[] = [];
     const [line, lineOffset] = this.quill.getLine(range.index);
     if (
-      this.quill.scroll.containerFormats &&
+      this.quill.scroll.hierarchical &&
       range.length === 0 &&
-      line instanceof BlockBlot &&
+      line?.statics.isBlock &&
       line.parent instanceof GenericContainer &&
       lineOffset === 0 &&
       line.length() <= 1 &&
@@ -989,16 +989,14 @@ function mergeDeltaAttributes(
   const attributes =
     AttributeMap.diff(removed.formats(), survivor.formats()) || {};
 
-  if (survivor.scroll.containerFormats) {
+  if ((survivor.scroll as Scroll).hierarchical) {
     const rIndex = removed.offset(removed.scroll);
     const rComesFirst = rIndex < survivor.offset(survivor.scroll);
-    let boundary: BlockBlot | undefined;
+    let boundary: BlockBlot | EmbedBlot | undefined;
     if (rComesFirst) {
       boundary = removed;
       if (rIndex > 0) {
-        boundary =
-          ((survivor.scroll as Scroll).line(rIndex - 1)[0] as BlockBlot) ||
-          removed;
+        boundary = (survivor.scroll as Scroll).line(rIndex - 1)[0] || removed;
       }
     }
     const survivorContainers = survivor.serializeContainers({ boundary });

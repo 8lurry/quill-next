@@ -11,6 +11,7 @@ import { AlignClass, AlignStyle } from './formats/align.js';
 import { Styles } from './formats/styles.js';
 import { Classes } from './formats/classes.js';
 import { ContainerAttributorInstance } from './formats/container.js';
+import { GenericContainer } from './blots/container.js';
 import {
   DirectionAttribute,
   DirectionClass,
@@ -73,9 +74,6 @@ Quill.register(
     'attributors/class/size': SizeClass,
 
     'attributors/style/align': AlignStyle,
-    'attributors/styles': Styles,
-    'attributors/classes': Classes,
-    'attributors/container': ContainerAttributorInstance,
     'attributors/style/background': BackgroundStyle,
     'attributors/style/color': ColorStyle,
     'attributors/style/direction': DirectionStyle,
@@ -90,10 +88,6 @@ Quill.register(
     'formats/align': AlignClass,
     'formats/direction': DirectionClass,
     'formats/indent': Indent,
-
-    'formats/styles': Styles,
-    'formats/classes': Classes,
-    'formats/container': ContainerAttributorInstance,
 
     'formats/background': BackgroundStyle,
     'formats/color': ColorStyle,
@@ -132,6 +126,17 @@ Quill.register(
   },
   true,
 );
+
+Quill.imports['attributors/styles'] = Styles;
+Quill.imports['formats/styles'] = Styles;
+
+Quill.imports['attributors/classes'] = Classes;
+Quill.imports['formats/classes'] = Classes;
+
+Quill.imports['attributors/container'] = ContainerAttributorInstance;
+Quill.imports['formats/container'] = ContainerAttributorInstance;
+
+Quill.imports['blots/generic-container'] = GenericContainer;
 
 export {
   AttributeMap,

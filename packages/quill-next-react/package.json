@@ -43,7 +43,7 @@
     "@emotion/react": "^11.14.0",
     "lodash-es": "^4.17.21",
     "marked": "^15.0.11",
-    "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.2/parchment-2026.8.2.tgz",
+    "parchment": "https://github.com/8lurry/parchment/releases/download/2026.8.3/parchment-2026.8.3.tgz",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {

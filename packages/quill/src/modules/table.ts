@@ -141,7 +141,7 @@ class Table extends Module {
   insertTable(rows: number, columns: number) {
     const range = this.quill.getSelection();
     if (range == null) return;
-    const cellBlotName = this.quill.scroll.containerFormats
+    const cellBlotName = this.quill.scroll.hierarchical
       ? TableContainerCell.blotName
       : TableCell.blotName;
     const delta = new Array(rows).fill(0).reduce((memo) => {

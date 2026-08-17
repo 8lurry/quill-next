@@ -226,7 +226,7 @@ class TableContainer extends GenericContainer {
           value = TableCell.formats(row.children.head.domNode);
         }
         let blotName = TableCell.blotName;
-        if (this.scroll.containerFormats) {
+        if ((this.scroll as Scroll).hierarchical) {
           blotName = TableContainerCell.blotName;
         }
         const blot = this.scroll.create(blotName, value);
@@ -258,7 +258,7 @@ class TableContainer extends GenericContainer {
     const [body] = this.descendant(TableBody) as TableBody[];
     if (body == null || body.children.head == null) return;
     let blotName = TableCell.blotName;
-    if (this.scroll.containerFormats) {
+    if ((this.scroll as Scroll).hierarchical) {
       blotName = TableContainerCell.blotName;
     }
     body.children.forEach((row) => {
@@ -277,7 +277,7 @@ class TableContainer extends GenericContainer {
     const id = tableId();
     const row = this.scroll.create(TableRow.blotName) as TableRow;
     let blotName = TableCell.blotName;
-    if (this.scroll.containerFormats) {
+    if ((this.scroll as Scroll).hierarchical) {
       blotName = TableContainerCell.blotName;
     }
     body.children.head.children.forEach(() => {

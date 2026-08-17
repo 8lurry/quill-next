@@ -7,11 +7,12 @@ import {
   ContainerBlot,
 } from 'parchment';
 import type { Blot, Parent, SerializeContainerOptions } from 'parchment';
-import Delta, { type Op } from '@quill-next/delta-es';
+import Delta from '@quill-next/delta-es';
 import Break from './break.js';
 import Inline from './inline.js';
 import TextBlot from './text.js';
 import SoftBreak, { SOFT_BREAK_CHARACTER } from './soft-break.js';
+import type Scroll from './scroll.js';
 
 const NEWLINE_LENGTH = 1;
 const softBreakRegex = new RegExp(`(${SOFT_BREAK_CHARACTER})`, 'g');
@@ -174,6 +175,8 @@ Block.defaultChild = Break;
 Block.allowedChildren = [Break, Inline, EmbedBlot, TextBlot];
 
 class BlockEmbed extends EmbedBlot {
+  public static isBlock = true;
+
   attributes: AttributorStore;
   domNode: HTMLElement;
 
@@ -239,7 +242,7 @@ function blockDelta(blot: BlockBlot, filter = true) {
 }
 
 export function serializeContainers(
-  line: Block,
+  line: BlockBlot | BlockEmbed,
   delta: Delta,
   options?: SerializeContainerOptions,
 ): Delta {
@@ -249,20 +252,18 @@ export function serializeContainers(
   }
 
   // Modify the last op (the newline)
-  const [ops, newline] = normalizeLastOp(delta);
-  if (newline == null) {
-    return ops as Delta;
-  }
+  const ops = normalizeLastOp(delta).ops;
+  const lastOp = ops[ops.length - 1];
 
-  newline.attributes = {
-    ...(newline.attributes ?? {}),
+  lastOp.attributes = {
+    ...(lastOp.attributes ?? {}),
     container: containers,
   };
 
   return new Delta(ops);
 }
 
-export function normalizeLastOp(delta: Delta): [Delta, null] | [Op[], Op] {
+export function normalizeLastOp(delta: Delta): Delta {
   const ops = delta.ops;
   const last = ops[ops.length - 1];
 
@@ -271,7 +272,7 @@ export function normalizeLastOp(delta: Delta): [Delta, null] | [Op[], Op] {
     typeof last.insert !== 'string' ||
     !last.insert.endsWith('\n')
   ) {
-    return [delta, null];
+    return delta;
   }
 
   // Normalize the ending so the last op is always '\n'
@@ -293,7 +294,7 @@ export function normalizeLastOp(delta: Delta): [Delta, null] | [Op[], Op] {
   }
 
   // Now the last op is guaranteed to be the newline.
-  return [ops, ops[ops.length - 1]];
+  return new Delta(ops);
 }
 
 function bubbleFormats(
@@ -303,7 +304,7 @@ function bubbleFormats(
 ): Record<string, unknown> {
   if (blot == null) return formats;
 
-  if (blot.scroll.containerFormats && blot instanceof ContainerBlot) {
+  if ((blot.scroll as Scroll).hierarchical && blot instanceof ContainerBlot) {
     return formats;
   }
 
