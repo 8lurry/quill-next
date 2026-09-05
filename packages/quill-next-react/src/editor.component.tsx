@@ -3,7 +3,7 @@ import Quill, { type Delta, type EmitterSource, type QuillOptions } from 'quill'
 import { useQuillEvent } from "./hooks/use-quill-event";
 import { QuillContext } from "./context/quill-context";
 import { BlotConstructor } from "parchment";
-import { ForkedRegistry } from "./forked-registry";
+// import { ForkedRegistry } from "./forked-registry";
 import { EditorChangeHandler } from './types/editor-change-handler.type';
 import { NextTheme } from './next-theme';
 import { NextKeyboard } from "./modules/next-keyboard";
@@ -71,10 +71,10 @@ async function loadTheme(theme: string): Promise<void> {
   }
 
   if (theme === 'next' || theme === 'snow') {
-    const { default: css } = await import(`quill-next/dist/quill.snow.css?raw`)
+    const { default: css } = await import(`quill/dist/quill.snow.css?raw`)
     insertTheme(theme, css);
   } else if (theme === 'bubble') {
-    const { default: css } = await import(`quill-next/dist/quill.bubble.css?raw`)
+    const { default: css } = await import(`quill/dist/quill.bubble.css?raw`)
     insertTheme(theme, css);
   }
 }
@@ -129,11 +129,11 @@ const QuillEditor = (props: IQuillEditorProps): React.ReactNode => {
       return;
     }
 
-    const forkedRegistry = new ForkedRegistry(Quill.DEFAULTS.registry);
+    // const forkedRegistry = new ForkedRegistry(Quill.DEFAULTS.registry);
 
     const quillOptions: QuillOptions = {
       ...config,
-      registry: forkedRegistry,
+      // registry: forkedRegistry,
     };
 
     if (!quillOptions.theme) {
