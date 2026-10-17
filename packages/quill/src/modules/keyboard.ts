@@ -556,6 +556,14 @@ const defaultOptions: KeyboardOptions = {
       key: 'Tab',
       handler(range, context) {
         if (context.format.table) return true;
+        if (
+          this.quill.scroll.hierarchical &&
+          this.quill.scroll.ancestorAt(
+            range.index,
+            'table-container-cell',
+          )[0] != null
+        )
+          return true;
         this.quill.history.cutoff();
         const delta = new Delta()
           .retain(range.index)
@@ -689,8 +697,22 @@ const defaultOptions: KeyboardOptions = {
       key: 'Tab',
       shiftKey: null,
       format: ['table'],
+      exclusiveContainer: true,
+      container: {
+        blot: 'table-container-cell',
+      },
       handler(range, context) {
-        const { event, line: cell } = context;
+        const { event, line } = context;
+        let cell: ParentBlot | null = line as ParentBlot;
+        if (cell.statics.blotName !== 'table') {
+          cell = this.quill.scroll.ancestorAt(
+            range.index,
+            'table-container-cell',
+          )[0];
+        }
+        if (cell == null) {
+          return true;
+        }
         const offset = cell.offset(this.quill.scroll);
         if (event.shiftKey) {
           this.quill.setSelection(offset - 1, Quill.sources.USER);
